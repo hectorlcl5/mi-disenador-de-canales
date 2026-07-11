@@ -214,41 +214,78 @@ const DisenadorCanales = () => {
     setModalAbierto(false); setMensaje("✅ Diseño cargado");
   };
 
-  // --- MANEJO DE VISTA DE PLANTA ---
+  // --- MANEJO DE VISTA DE PLANTA Y MENÚS (CON RESTRICCIÓN DE 6000MM RESTAURADA) ---
   const abrirMenuColumna = (e, colId) => { e.preventDefault(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: false, traslapoIndex: null }); };
   const abrirMenuTraslapo = (e, colId, index) => { e.preventDefault(); e.stopPropagation(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: true, traslapoIndex: index }); };
 
-  const actualizarPropiedadColumna = (colId, campo, valor) => { setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], [campo]: valor } }); };
+  const actualizarPropiedadColumna = (colId, campo, valor) => { 
+    let valorFinal = valor;
+    if (campo === 'longitudDerecha') {
+      if (parseFloat(valor) > 6000) {
+        valorFinal = "6000";
+        setMensaje("⚠️ Línea máxima es 6000 mm. Debes activar otra división de traslapo.");
+      } else {
+        setMensaje(""); // Limpia advertencias si está dentro del límite
+      }
+    }
+    setConfigColumnas(prev => ({ ...prev, [colId]: { ...prev[colId], [campo]: valorFinal } })); 
+  };
+  
   const actualizarPropiedadTraslapo = (colId, index, campo, valor) => {
-    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
-    listaOriginal[index] = { ...listaOriginal[index], [campo]: valor };
-    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], listaTraslapos: listaOriginal } });
+    let valorFinal = valor;
+    if (campo === 'longitud' || campo === 'longitudCierre') {
+      if (parseFloat(valor) > 6000) {
+        valorFinal = "6000";
+        setMensaje("⚠️ El traslapo máximo es 6000 mm. Agrega un traslapo adicional.");
+      } else {
+        setMensaje(""); // Limpia advertencias
+      }
+    }
+    setConfigColumnas(prev => {
+      const listaOriginal = [...(prev[colId]?.listaTraslapos || [])];
+      listaOriginal[index] = { ...listaOriginal[index], [campo]: valorFinal };
+      return { ...prev, [colId]: { ...prev[colId], listaTraslapos: listaOriginal } };
+    });
   };
+  
   const agregarNuevoTraslapoCadena = (colId) => {
-    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
-    listaOriginal.push({ longitud: 3000, pendiente: 0, conectarA: 'columna', longitudCierre: 3000, pendienteCierre: 0 });
-    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], unirDerecha: false, listaTraslapos: listaOriginal } });
+    setConfigColumnas(prev => {
+      const listaOriginal = [...(prev[colId]?.listaTraslapos || [])];
+      listaOriginal.push({ longitud: 3000, pendiente: 0, conectarA: 'columna', longitudCierre: 3000, pendienteCierre: 0 });
+      return { ...prev, [colId]: { ...prev[colId], unirDerecha: false, listaTraslapos: listaOriginal } };
+    });
     setMenuFlotante({ ...menuFlotante, visible: false });
   };
+  
   const eliminarTraslapoEspecifico = (colId, index) => {
-    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
-    listaOriginal.splice(index, 1);
-    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], listaTraslapos: listaOriginal } });
-    setMenuFlotante({ ...menuFlotante, visible: false });
-  };
-  const eliminarUltimoTraslapo = (colId) => {
-    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
-    listaOriginal.pop();
-    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], listaTraslapos: listaOriginal } });
+    setConfigColumnas(prev => {
+      const listaOriginal = [...(prev[colId]?.listaTraslapos || [])];
+      listaOriginal.splice(index, 1);
+      return { ...prev, [colId]: { ...prev[colId], listaTraslapos: listaOriginal } };
+    });
     setMenuFlotante({ ...menuFlotante, visible: false });
   };
 
-  // FUNCIONES AUXILIARES PARA EL MENU PARA EVITAR ERRORES DE SINTAXIS
+  const eliminarUltimoTraslapo = (colId) => {
+    setConfigColumnas(prev => {
+      const listaOriginal = [...(prev[colId]?.listaTraslapos || [])];
+      listaOriginal.pop();
+      return { ...prev, [colId]: { ...prev[colId], listaTraslapos: listaOriginal } };
+    });
+    setMenuFlotante({ ...menuFlotante, visible: false });
+  };
+
   const setSoscoType = (tipo) => {
-    actualizarPropiedadColumna(menuFlotante.columnaId, 'soscoCentro', tipo === 'c');
-    actualizarPropiedadColumna(menuFlotante.columnaId, 'soscoIzquierdo', tipo === 'i');
-    actualizarPropiedadColumna(menuFlotante.columnaId, 'soscoDerecho', tipo === 'd');
-    actualizarPropiedadColumna(menuFlotante.columnaId, 'dosSoscos', tipo === 'dos');
+    setConfigColumnas(prev => ({
+      ...prev,
+      [menuFlotante.columnaId]: {
+        ...prev[menuFlotante.columnaId],
+        soscoCentro: tipo === 'c',
+        soscoIzquierdo: tipo === 'i',
+        soscoDerecho: tipo === 'd',
+        dosSoscos: tipo === 'dos'
+      }
+    }));
   };
 
   const fuentes = numColumnas <= 6 ? { cotas: 9.5, soscos: 8, columnas: 13 } : numColumnas <= 12 ? { cotas: 8, soscos: 7, columnas: 11 } : { cotas: 6.5, soscos: 5.5, columnas: 9 };
@@ -328,20 +365,17 @@ const DisenadorCanales = () => {
             const yFinal = yActual + dY;
 
             puntosEstructura[col.id].lineas.push({ x1: xCursor, y1: yActual, x2: xSiguiente, y2: yFinal, color: "#2c3e50", width: 1.8 });
-            const factorDesfase = numColumnas > 10 ? 4 : 6;
-            const desfaseY = (idx % 2 === 0) ? -factorDesfase : -(factorDesfase * 2.5);
+            const desfaseY = (idx % 2 === 0) ? -6 : -15;
             puntosEstructura[col.id].cotas.push({ x: (xCursor + xSiguiente)/2, y: yActual + (dY/2) + desfaseY, texto: traslapo.longitud });
             puntosEstructura[col.id].ejesTraslapos.push({ x: xSiguiente, clickY: yFinal, index: idx });
             xCursor = xSiguiente; yActual = yFinal;
           });
 
           if (ultimoT.conectarA === 'columna') {
-            const mmCierre = parseFloat(ultimoT.longitudCierre) || 0;
             const pendCierre = parseFloat(ultimoT.pendienteCierre) || 0;
             const dYCierre = (finX - xCursor) * Math.sin((pendCierre * Math.PI) / 180);
             puntosEstructura[col.id].lineas.push({ x1: xCursor, y1: yActual, x2: finX, y2: yActual + dYCierre, color: "#2c3e50", width: 1.8 });
-            const factorDesfase = numColumnas > 10 ? 4 : 6;
-            const desfaseY = (listaT.length % 2 === 0) ? -factorDesfase : -(factorDesfase * 2.5);
+            const desfaseY = (listaT.length % 2 === 0) ? -6 : -15;
             puntosEstructura[col.id].cotas.push({ x: (xCursor + finX)/2, y: yActual + (dYCierre/2) + desfaseY, texto: ultimoT.longitudCierre });
             yActual = yActual + dYCierre;
           }
@@ -363,7 +397,7 @@ const DisenadorCanales = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Arial', backgroundColor: '#f0f2f5' }} onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })}>
       
-      {/* PANEL UNIFICADO IZQUIERDO DE CONTROL INDUSTRIAL */}
+      {/* 🎛️ PANEL UNIFICADO IZQUIERDO DE CONTROL INDUSTRIAL */}
       <div className="no-print" style={{ width: '430px', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '15px', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
           <button style={btnStyle} onClick={() => { setProjectId(null); setConfigColumnas({}); setNumColumnasInput("6"); setNumColumnas(6); setMatrizPliegues({}); setMensaje("✨ Restablecido"); }}>Nuevo</button>
@@ -372,7 +406,10 @@ const DisenadorCanales = () => {
           <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff' }}>Imprimir</button>
         </div>
 
-        <p style={{ color: 'blue', fontSize: '11px', fontWeight: 'bold', margin: '4px 0' }}>{mensaje}</p>
+        {/* ALERTA VISUAL DINÁMICA: Si es advertencia o error, se pone rojo */}
+        <p style={{ color: mensaje.includes("⚠️") || mensaje.includes("❌") || mensaje.includes("🚨") ? '#dc2626' : '#2563eb', fontSize: '11px', fontWeight: 'bold', margin: '4px 0' }}>
+          {mensaje}
+        </p>
 
         <label style={labelTitleStyle}>PROYECTO / ARCHIVO:</label>
         <input type="text" style={{ ...inputStyle, marginBottom: '8px' }} value={nombreArchivo} onChange={e => setNombreArchivo(e.target.value)} />
@@ -404,7 +441,7 @@ const DisenadorCanales = () => {
           </button>
         </div>
 
-        {/* MEDIDAS INDEPENDIENTES POR PUNTO */}
+        {/* 📐 MEDIDAS INDEPENDIENTES POR PUNTO */}
         <div style={{ ...cardStyle, backgroundColor: '#f1f5f9', border: '1px solid #1e293b' }}>
           <label style={{ ...cardTitleStyle, color: '#1e293b' }}>📐 MEDIDAS INDEPENDIENTES POR PUNTO</label>
           <div style={{ marginTop: '8px', marginBottom: '8px' }}>
@@ -457,9 +494,10 @@ const DisenadorCanales = () => {
         </div>
       </div>
 
-      {/* PLANO DE TRABAJO EN HOJA CARTA HORIZONTAL GRANDE */}
+      {/* 📄 PLANO DE TRABAJO EN HOJA CARTA HORIZONTAL GRANDE */}
       <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
         <div className="carta-contenedor" style={{ width: '816px', background: '#fff', padding: '15px', boxSizing: 'border-box' }}>
+          
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2.5px solid #f39c12', paddingBottom: '6px', marginBottom: '10px' }}>
             <img src={logoCortiza} alt="Cortiza" style={{ width: '100px', objectFit: 'contain' }} />
             <div style={{ textAlign: 'right' }}>
@@ -491,7 +529,7 @@ const DisenadorCanales = () => {
                       <g key={`eje-t-${tIdx}`}>
                         <line x1={eje.x} y1={40} x2={eje.x} y2={210} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" />
                         <rect x={eje.x - 10} y={eje.clickY - 10} width="20" height="20" fill="transparent" style={{ cursor: 'context-menu' }} onContextMenu={(e) => abrirMenuTraslapo(e, colId, eje.index)} />
-                        <text x={eje.x} y={eje.clickY + 4} fontSize="11" fill="blue" fontWeight="bold" textAnchor="middle">X</text>
+                        <text x={eje.x} y={eje.clickY + 4} fontSize="11" fill="blue" fontWeight="bold" textAnchor="middle" style={{ pointerEvents: 'none' }}>X</text>
                       </g>
                     ))}
                   </g>
@@ -520,7 +558,7 @@ const DisenadorCanales = () => {
         </div>
       </div>
 
-      {/* --- MENU CONTEXTUAL COMPLETAMENTE RESTAURADO --- */}
+      {/* --- MENU CONTEXTUAL --- */}
       {menuFlotante.visible && colActual && (
         <div style={{ ...menuContextStyle, top: menuFlotante.y, left: menuFlotante.x }} onClick={e => e.stopPropagation()}>
           
