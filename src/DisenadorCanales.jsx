@@ -1,0 +1,664 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import logoCortiza from './logo-cortiza.png';
+import CorteLateralCanal from './CorteLateralCanal';
+
+const DisenadorCanales = () => {
+  // --- ESTADOS PRINCIPALES DE CONFIGURACIÓN ---
+  const [projectId, setProjectId] = useState(null);
+  const [nombreArchivo, setNombreArchivo] = useState("Canales_xxxx");
+  const [tituloHoja, setTituloHoja] = useState("DISEÑO PARA FABRICACIÓN DE CANALES CUBIERTA BODEGA");
+  const [nombreEje, setNombreEje] = useState("Canal eje A");
+  const [numColumnasInput, setNumColumnasInput] = useState("6"); 
+  const [numColumnas, setNumColumnas] = useState(6); 
+  const [calibreCanal, setCalibreCanal] = useState("20");
+  const [invertirNumeracion, setInvertirNumeracion] = useState(false);
+  const [mensaje, setMensaje] = useState("");
+  const [configColumnas, setConfigColumnas] = useState({});
+
+  // --- ESTADOS DOBLECES Y CONTROL DE MATRIZ TRIDIMENSIONAL ---
+  const [pliegues, setPliegues] = useState([
+    { longitud: 80, angulo: 90, detalle: "Pestaña" },
+    { longitud: 220, angulo: 105, detalle: "Aleta Izq" },
+    { longitud: 350, angulo: 90, detalle: "Fondo" },
+    { longitud: 120, angulo: 75, detalle: "Aleta Der" },
+    { longitud: 40, angulo: 0, detalle: "Pestaña Cubierta" }
+  ]);
+  const [nuevoLongitud, setNuevoLongitud] = useState("100");
+  const [nuevoAngulo, setNuevoAngulo] = useState("90");
+  const [nuevoDetalle, setNuevoDetalle] = useState("Nuevo pliegue");
+
+  const [matrizPliegues, setMatrizPliegues] = useState({});
+  const [hitoSeleccionado, setHitoSeleccionado] = useState("viga-0");
+
+  // --- CONTROL MODALES INTERFAZ ---
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [listaProyectos, setListaProyectos] = useState([]);
+  const [cargandoLista, setCargandoLista] = useState(false);
+  const [menuFlotante, setMenuFlotante] = useState({ visible: false, x: 0, y: 0, columnaId: null, esTraslapo: false, traslapoIndex: null });
+
+  const tieneP1 = pliegues.some(p => p.detalle === "Pestaña" || p.detalle === "Pestaña Recuperada");
+  const tieneUltima = pliegues.some(p => p.detalle === "Pestaña Cubierta" || p.detalle === "Cubierta Recuperada");
+
+  useEffect(() => {
+    if (numColumnasInput !== "") {
+      const valor = parseInt(numColumnasInput);
+      if (!isNaN(valor) && valor >= 2 && valor <= 25) setNumColumnas(valor);
+    }
+  }, [numColumnasInput]);
+
+  useEffect(() => {
+    const nuevaConfig = { ...configColumnas };
+    let huboCambio = false;
+    for (let i = 0; i < numColumnas; i++) {
+      if (!nuevaConfig[i]) {
+        nuevaConfig[i] = {
+          unirDerecha: false, longitudDerecha: 2000, pendiente: 0,
+          planaCentro: 0, planaDerecha: 0, planaIzquierda: 0,
+          soscoCentro: false, soscoIzquierdo: false, soscoDerecho: false, dosSoscos: false,
+          diametroSosco: '4"', listaTraslapos: [] 
+        };
+        huboCambio = true;
+      }
+    }
+    if (huboCambio) setConfigColumnas(nuevaConfig);
+  }, [numColumnas]);
+
+  // Sincronizar matriz con los pliegues globales existentes
+  useEffect(() => {
+    const nuevaMatriz = { ...matrizPliegues };
+    let actualizo = false;
+    const hitos = obtenerHitosOrdenados();
+    hitos.forEach(hito => {
+      if (!nuevaMatriz[hito.keyHash] || nuevaMatriz[hito.keyHash].length !== pliegues.length) {
+        nuevaMatriz[hito.keyHash] = pliegues.map(p => ({ ...p }));
+        actualizo = true;
+      }
+    });
+    if (actualizo) setMatrizPliegues(nuevaMatriz);
+  }, [pliegues, numColumnas, configColumnas]);
+
+  const generarColumnasLineales = () => {
+    const cols = [];
+    const anchoMaxSvn = 816; 
+    const anchoVisualPartePlana = 25; 
+
+    const colInicialConfig = configColumnas[0] || {};
+    const colFinalConfig = configColumnas[numColumnas - 1] || {};
+
+    const tienePlanaIzquierda = parseFloat(colInicialConfig.planaIzquierda) > 0 || parseFloat(colInicialConfig.planaCentro) > 0;
+    const tienePlanaDerecha = parseFloat(colFinalConfig.planaDerecha) > 0 || parseFloat(colFinalConfig.planaCentro) > 0;
+
+    const inicioRealX = tienePlanaIzquierda ? (15 + anchoVisualPartePlana) : 15;
+    const finRealX = tienePlanaDerecha ? (anchoMaxSvn - 15 - anchoVisualPartePlana) : (anchoMaxSvn - 15);
+    const anchoUtilCalculado = finRealX - inicioRealX;
+
+    for (let i = 0; i < numColumnas; i++) {
+      const x = inicioRealX + (numColumnas > 1 ? i * (anchoUtilCalculado / (numColumnas - 1)) : 0);
+      const numeroMostrado = invertirNumeracion ? (numColumnas - i) : (i + 1);
+      cols.push({ id: i, x, numero: numeroMostrado });
+    }
+    return cols;
+  };
+
+  const columnasCalculadas = generarColumnasLineales();
+
+  const obtenerHitosOrdenados = () => {
+    const hitos = [];
+    columnasCalculadas.forEach((col, cIdx) => {
+      hitos.push({ keyHash: `viga-${col.id}`, label: `Viga ${col.numero}` });
+      if (cIdx < columnasCalculadas.length - 1) {
+        const listaT = configColumnas[col.id]?.listaTraslapos || [];
+        listaT.forEach((_, tIdx) => {
+          hitos.push({ keyHash: `traslapo-${col.id}-${tIdx}`, label: `Traslapo T${tIdx + 1} de Viga ${col.numero}` });
+        });
+      }
+    });
+    return hitos;
+  };
+  
+  const hitosOrdenados = obtenerHitosOrdenados();
+
+  // --- ACCIONES SOBRE PLIEGUES GLOBALES Y MATRIZ ---
+  const agregarPliegue = () => {
+    if (!nuevoLongitud) return;
+    setPliegues([...pliegues, { longitud: parseFloat(nuevoLongitud) || 0, angulo: parseFloat(nuevoAngulo) || 0, detalle: nuevoDetalle }]);
+    setNuevoLongitud(""); setNuevoAngulo("90"); setNuevoDetalle("");
+  };
+
+  const eliminarPliegue = (index) => {
+    const copia = [...pliegues]; copia.splice(index, 1); setPliegues(copia);
+  };
+
+  const toggleCaraExtrema = (tipo) => {
+    const copiaPliegues = [...pliegues];
+    const copiaMatriz = { ...matrizPliegues };
+    if (tipo === 'P1') {
+      if (tieneP1) {
+        copiaPliegues.shift();
+        Object.keys(copiaMatriz).forEach(key => { if (Array.isArray(copiaMatriz[key])) copiaMatriz[key].shift(); });
+        setMensaje("🗑️ Cara P1 eliminada de la canal.");
+      } else {
+        const nuevaP1 = { longitud: 80, angulo: 90, detalle: "Pestaña" };
+        copiaPliegues.unshift(nuevaP1);
+        Object.keys(copiaMatriz).forEach(key => { if (Array.isArray(copiaMatriz[key])) copiaMatriz[key].unshift({ ...nuevaP1 }); });
+        setMensaje("➕ Cara P1 reincorporada.");
+      }
+    } else if (tipo === 'ULTIMA') {
+      if (tieneUltima) {
+        copiaPliegues.pop();
+        Object.keys(copiaMatriz).forEach(key => { if (Array.isArray(copiaMatriz[key])) copiaMatriz[key].pop(); });
+        setMensaje("🗑️ Última cara eliminada.");
+      } else {
+        const nuevaUlt = { longitud: 40, angulo: 0, detalle: "Pestaña Cubierta" };
+        copiaPliegues.push(nuevaUlt);
+        Object.keys(copiaMatriz).forEach(key => { if (Array.isArray(copiaMatriz[key])) copiaMatriz[key].push({ ...nuevaUlt }); });
+        setMensaje("➕ Última cara reincorporada.");
+      }
+    }
+    setPliegues(copiaPliegues); setMatrizPliegues(copiaMatriz);
+  };
+
+  const modificarPliegue = (index, campo, valor) => {
+    const copia = [...pliegues]; copia[index] = { ...copia[index], [campo]: valor }; setPliegues(copia);
+  };
+
+  const modificarPliegueDeHito = (index, campo, valor) => {
+    const copiaMatriz = { ...matrizPliegues };
+    if (!copiaMatriz[hitoSeleccionado]) copiaMatriz[hitoSeleccionado] = pliegues.map(p => ({ ...p }));
+    copiaMatriz[hitoSeleccionado][index] = { ...copiaMatriz[hitoSeleccionado][index], [campo]: valor };
+    setMatrizPliegues(copiaMatriz);
+  };
+
+  const duplicarMedidasEnTodosLosHitos = () => {
+    const copiaMatriz = {};
+    const plieguesModeloAAplicar = matrizPliegues[hitoSeleccionado] || pliegues.map(p => ({ ...p }));
+    hitosOrdenados.forEach(hito => { copiaMatriz[hito.keyHash] = plieguesModeloAAplicar.map(p => ({ ...p })); });
+    setMatrizPliegues(copiaMatriz);
+    setMensaje("📋 Medidas copiadas a toda la obra.");
+  };
+
+  const reiniciarMatrizHitos = () => { setMatrizPliegues({}); setMensaje("🗑️ Restablecido a plantilla base."); };
+
+  const plieguesHitoActual = matrizPliegues[hitoSeleccionado] || pliegues.map(p => ({ ...p }));
+  const desarrolloHitoActual = plieguesHitoActual.reduce((s, p) => s + (parseFloat(p.longitud) || 0), 0);
+  const alertaDesarrollo = desarrolloHitoActual < 1000 ? { color: '#16a34a', texto: '✅ (Estándar 1m)' } : desarrolloHitoActual < 1200 ? { color: '#ea580c', texto: '⚠️ (Especial 1.2m)' } : { color: '#dc2626', texto: '🚨 EXCEDE MÁXIMO' };
+
+  // --- CRUD SUPABASE ---
+  const guardarCanalDB = async () => {
+    setMensaje("Guardando en base de datos PostgreSQL...");
+    const payload = {
+      nombre_proyecto: nombreArchivo,
+      tramos: { modulo: "canales", tituloHoja, nombreEje, numColumnas, calibreCanal, invertirNumeracion, configColumnas, pliegues, matrizPliegues },
+      ultima_actualizacion: new Date()
+    };
+    let res = projectId ? await supabase.from('diseños_canales').update(payload).eq('id', projectId) : await supabase.from('diseños_canales').insert([payload]).select();
+    if (!res.error && res.data?.length > 0) setProjectId(res.data[0].id);
+    setMensaje(res.error ? "❌ Error de guardado" : "✅ Respaldo exitoso en la nube");
+  };
+
+  const abrirModalCarga = async () => {
+    setModalAbierto(true); setCargandoLista(true);
+    const { data, error } = await supabase.from('diseños_canales').select('id, nombre_proyecto, ultima_actualizacion, tramos').order('ultima_actualizacion', { ascending: false });
+    if (!error) setListaProyectos(data.filter(p => p.tramos?.modulo === "canales"));
+    setCargandoLista(false);
+  };
+
+  const cargarProyectoEspecifico = (p) => {
+    const info = p.tramos;
+    setProjectId(p.id); setNombreArchivo(p.nombre_proyecto); setTituloHoja(info.tituloHoja || ""); setNombreEje(info.nombreEje || "");
+    setNumColumnasInput((info.numColumnas || 6).toString()); setNumColumnas(info.numColumnas || 6); setCalibreCanal(info.calibreCanal || "20");
+    setInvertirNumeracion(!!info.invertirNumeracion); setConfigColumnas(info.configColumnas || {});
+    if (info.pliegues) setPliegues(info.pliegues);
+    if (info.matrizPliegues) setMatrizPliegues(info.matrizPliegues);
+    setModalAbierto(false); setMensaje("✅ Diseño cargado");
+  };
+
+  // --- MANEJO DE VISTA DE PLANTA ---
+  const abrirMenuColumna = (e, colId) => { e.preventDefault(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: false, traslapoIndex: null }); };
+  const abrirMenuTraslapo = (e, colId, index) => { e.preventDefault(); e.stopPropagation(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: true, traslapoIndex: index }); };
+
+  const actualizarPropiedadColumna = (colId, campo, valor) => { setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], [campo]: valor } }); };
+  const actualizarPropiedadTraslapo = (colId, index, campo, valor) => {
+    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
+    listaOriginal[index] = { ...listaOriginal[index], [campo]: valor };
+    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], listaTraslapos: listaOriginal } });
+  };
+  const agregarNuevoTraslapoCadena = (colId) => {
+    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
+    listaOriginal.push({ longitud: 3000, pendiente: 0, conectarA: 'columna', longitudCierre: 3000, pendienteCierre: 0 });
+    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], unirDerecha: false, listaTraslapos: listaOriginal } });
+    setMenuFlotante({ ...menuFlotante, visible: false });
+  };
+  const eliminarTraslapoEspecifico = (colId, index) => {
+    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
+    listaOriginal.splice(index, 1);
+    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], listaTraslapos: listaOriginal } });
+    setMenuFlotante({ ...menuFlotante, visible: false });
+  };
+  const eliminarUltimoTraslapo = (colId) => {
+    const listaOriginal = [...(configColumnas[colId]?.listaTraslapos || [])];
+    listaOriginal.pop();
+    setConfigColumnas({ ...configColumnas, [colId]: { ...configColumnas[colId], listaTraslapos: listaOriginal } });
+    setMenuFlotante({ ...menuFlotante, visible: false });
+  };
+
+  // FUNCIONES AUXILIARES PARA EL MENU PARA EVITAR ERRORES DE SINTAXIS
+  const setSoscoType = (tipo) => {
+    actualizarPropiedadColumna(menuFlotante.columnaId, 'soscoCentro', tipo === 'c');
+    actualizarPropiedadColumna(menuFlotante.columnaId, 'soscoIzquierdo', tipo === 'i');
+    actualizarPropiedadColumna(menuFlotante.columnaId, 'soscoDerecho', tipo === 'd');
+    actualizarPropiedadColumna(menuFlotante.columnaId, 'dosSoscos', tipo === 'dos');
+  };
+
+  const fuentes = numColumnas <= 6 ? { cotas: 9.5, soscos: 8, columnas: 13 } : numColumnas <= 12 ? { cotas: 8, soscos: 7, columnas: 11 } : { cotas: 6.5, soscos: 5.5, columnas: 9 };
+
+  // --- MOTOR GEOMÉTRICO PLANTA ---
+  const datosGeometria = (() => {
+    let puntosEstructura = {};
+    let yActual = 75;
+    const anchoFijoPlana = 25;
+
+    columnasCalculadas.forEach((col, index) => {
+      const config = configColumnas[col.id] || { listaTraslapos: [] };
+      const listaT = config.listaTraslapos || [];
+      puntosEstructura[col.id] = { xCol: col.x, yInicioColumna: yActual, lineas: [], cotas: [], soscosSVG: [], ejesTraslapos: [] };
+
+      const renderizarSoscosLocal = (x, y) => {
+        const soscos = [];
+        const altoSosco = 13; const anchoSosco = 7;
+        const diam = config.diametroSosco || '4"';
+
+        const crearAux = (xPos, k) => (
+          <g key={k}>
+            <rect x={xPos - (anchoSosco+4)/2} y={y} width={anchoSosco+4} height="3" fill="#7f8c8d" rx="1" />
+            <rect x={xPos - anchoSosco/2} y={y + 3} width={anchoSosco} height={altoSosco - 3} fill="#bdc3c7" />
+            <rect x={xPos - anchoSosco/2} width={anchoSosco/3} y={y + 3} height={altoSosco - 3} fill="#95a5a6" opacity="0.4" />
+            <text x={xPos + (anchoSosco/2) + 2} y={y + (altoSosco/2) + 3} fontSize={fuentes.soscos} fill="red" fontWeight="bold">{diam}</text>
+          </g>
+        );
+
+        if (config.soscoCentro) soscos.push(crearAux(x, 'c'));
+        if (config.soscoIzquierdo) soscos.push(crearAux(x - anchoFijoPlana/2, 'i'));
+        if (config.soscoDerecho) soscos.push(crearAux(x + anchoFijoPlana/2, 'd'));
+        if (config.dosSoscos) { soscos.push(crearAux(x - anchoFijoPlana/2, 'di')); soscos.push(crearAux(x + anchoFijoPlana/2, 'dd')); }
+        return soscos;
+      };
+
+      if (parseFloat(config.planaIzquierda) > 0) {
+        puntosEstructura[col.id].lineas.push({ x1: col.x - anchoFijoPlana, y1: yActual, x2: col.x, y2: yActual, color: "blue", width: 2 });
+        puntosEstructura[col.id].cotas.push({ x: col.x - anchoFijoPlana/2, y: yActual + 28, texto: config.planaIzquierda });
+        puntosEstructura[col.id].soscosSVG.push(...renderizarSoscosLocal(col.x - anchoFijoPlana/2, yActual));
+      }
+      if (parseFloat(config.planaCentro) > 0) {
+        puntosEstructura[col.id].lineas.push({ x1: col.x - anchoFijoPlana/2, y1: yActual, x2: col.x + anchoFijoPlana/2, y2: yActual, color: "blue", width: 2 });
+        puntosEstructura[col.id].cotas.push({ x: col.x, y: yActual + 28, texto: config.planaCentro });
+        puntosEstructura[col.id].soscosSVG.push(...renderizarSoscosLocal(col.x, yActual));
+      }
+      if (parseFloat(config.planaDerecha) > 0) {
+        puntosEstructura[col.id].lineas.push({ x1: col.x, y1: yActual, x2: col.x + anchoFijoPlana, y2: yActual, color: "blue", width: 2 });
+        puntosEstructura[col.id].cotas.push({ x: col.x + anchoFijoPlana/2, y: yActual + 28, texto: config.planaDerecha });
+        puntosEstructura[col.id].soscosSVG.push(...renderizarSoscosLocal(col.x + anchoFijoPlana/2, yActual));
+      }
+
+      if (index < columnasCalculadas.length - 1) {
+        const sigCol = columnasCalculadas[index + 1];
+        let inicioX = col.x + (parseFloat(config.planaDerecha) > 0 ? anchoFijoPlana : parseFloat(config.planaCentro) > 0 ? anchoFijoPlana/2 : 0);
+        let finX = sigCol.x - (parseFloat(configColumnas[sigCol.id]?.planaIzquierda) > 0 ? anchoFijoPlana : parseFloat(configColumnas[sigCol.id]?.planaCentro) > 0 ? anchoFijoPlana/2 : 0);
+        const anchoMaxDisponibleX = finX - inicioX;
+
+        if (listaT.length > 0) {
+          const totalSegmentos = listaT.length + (listaT[listaT.length - 1].conectarA === 'columna' ? 1 : 0);
+          const pixelMinimoGarantizado = Math.max(14, 22 - (numColumnas * 0.3)); 
+          const pixelesFijosReservados = totalSegmentos * pixelMinimoGarantizado;
+          const pixelesRemanentesProporcionales = Math.max(0, anchoMaxDisponibleX - pixelesFijosReservados);
+
+          let sumatoriaMilimetrosTotal = 0;
+          listaT.forEach(t => sumatoriaMilimetrosTotal += (parseFloat(t.longitud) || 0));
+          const ultimoT = listaT[listaT.length - 1];
+          if (ultimoT.conectarA === 'columna') sumatoriaMilimetrosTotal += (parseFloat(ultimoT.longitudCierre) || 0);
+
+          let xCursor = inicioX;
+          listaT.forEach((traslapo, idx) => {
+            const mmTramoActual = parseFloat(traslapo.longitud) || 0;
+            const parteProporcional = sumatoriaMilimetrosTotal > 0 ? (mmTramoActual / sumatoriaMilimetrosTotal) * pixelesRemanentesProporcionales : 0;
+            const xSiguiente = xCursor + pixelMinimoGarantizado + parteProporcional;
+            const pend = parseFloat(traslapo.pendiente) || 0;
+            const dY = (xSiguiente - xCursor) * Math.sin((pend * Math.PI) / 180);
+            const yFinal = yActual + dY;
+
+            puntosEstructura[col.id].lineas.push({ x1: xCursor, y1: yActual, x2: xSiguiente, y2: yFinal, color: "#2c3e50", width: 1.8 });
+            const factorDesfase = numColumnas > 10 ? 4 : 6;
+            const desfaseY = (idx % 2 === 0) ? -factorDesfase : -(factorDesfase * 2.5);
+            puntosEstructura[col.id].cotas.push({ x: (xCursor + xSiguiente)/2, y: yActual + (dY/2) + desfaseY, texto: traslapo.longitud });
+            puntosEstructura[col.id].ejesTraslapos.push({ x: xSiguiente, clickY: yFinal, index: idx });
+            xCursor = xSiguiente; yActual = yFinal;
+          });
+
+          if (ultimoT.conectarA === 'columna') {
+            const mmCierre = parseFloat(ultimoT.longitudCierre) || 0;
+            const pendCierre = parseFloat(ultimoT.pendienteCierre) || 0;
+            const dYCierre = (finX - xCursor) * Math.sin((pendCierre * Math.PI) / 180);
+            puntosEstructura[col.id].lineas.push({ x1: xCursor, y1: yActual, x2: finX, y2: yActual + dYCierre, color: "#2c3e50", width: 1.8 });
+            const factorDesfase = numColumnas > 10 ? 4 : 6;
+            const desfaseY = (listaT.length % 2 === 0) ? -factorDesfase : -(factorDesfase * 2.5);
+            puntosEstructura[col.id].cotas.push({ x: (xCursor + finX)/2, y: yActual + (dYCierre/2) + desfaseY, texto: ultimoT.longitudCierre });
+            yActual = yActual + dYCierre;
+          }
+        } else if (config.unirDerecha) {
+          const pend = parseFloat(config.pendiente) || 0;
+          const dY = (finX - inicioX) * Math.sin((pend * Math.PI) / 180);
+          puntosEstructura[col.id].lineas.push({ x1: inicioX, y1: yActual, x2: finX, y2: yActual + dY, color: "#2c3e50", width: 1.8 });
+          puntosEstructura[col.id].cotas.push({ x: (inicioX + finX)/2, y: yActual + (dY/2) - 6, texto: config.longitudDerecha });
+          yActual = yActual + dY;
+        }
+      }
+    });
+    return puntosEstructura;
+  })();
+
+  const colActual = menuFlotante.columnaId !== null ? configColumnas[menuFlotante.columnaId] : null;
+  const traslapoActual = (menuFlotante.esTraslapo && colActual && colActual.listaTraslapos && menuFlotante.traslapoIndex !== null) ? colActual.listaTraslapos[menuFlotante.traslapoIndex] : null;
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Arial', backgroundColor: '#f0f2f5' }} onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })}>
+      
+      {/* PANEL UNIFICADO IZQUIERDO DE CONTROL INDUSTRIAL */}
+      <div className="no-print" style={{ width: '430px', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '15px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
+          <button style={btnStyle} onClick={() => { setProjectId(null); setConfigColumnas({}); setNumColumnasInput("6"); setNumColumnas(6); setMatrizPliegues({}); setMensaje("✨ Restablecido"); }}>Nuevo</button>
+          <button style={btnStyle} onClick={abrirModalCarga}>Abrir</button>
+          <button style={{ ...btnStyle, backgroundColor: '#28a745', color: '#fff' }} onClick={guardarCanalDB}>Guardar</button>
+          <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff' }}>Imprimir</button>
+        </div>
+
+        <p style={{ color: 'blue', fontSize: '11px', fontWeight: 'bold', margin: '4px 0' }}>{mensaje}</p>
+
+        <label style={labelTitleStyle}>PROYECTO / ARCHIVO:</label>
+        <input type="text" style={{ ...inputStyle, marginBottom: '8px' }} value={nombreArchivo} onChange={e => setNombreArchivo(e.target.value)} />
+
+        <label style={labelTitleStyle}>TÍTULO HOJA:</label>
+        <input type="text" style={{ ...inputStyle, marginBottom: '8px' }} value={tituloHoja} onChange={e => setTituloHoja(e.target.value)} />
+
+        <label style={labelTitleStyle}>IDENTIFICACIÓN EJE:</label>
+        <input type="text" style={{ ...inputStyle, marginBottom: '8px', color: 'red', fontWeight: 'bold' }} value={nombreEje} onChange={e => setNombreEje(e.target.value)} />
+
+        <div style={cardStyle}>
+          <label style={cardTitleStyle}>Estructura y Calibres</label>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '10px' }}>N° Vigas:</label>
+              <input type="number" style={inputStyle} value={numColumnasInput} onChange={e => setNumColumnasInput(e.target.value)} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '10px' }}>Calibre:</label>
+              <select style={inputStyle} value={calibreCanal} onChange={e => setCalibreCanal(e.target.value)}>
+                <option value="18">Cal. 18</option>
+                <option value="20">Cal. 20</option>
+                <option value="22">Cal. 22</option>
+              </select>
+            </div>
+          </div>
+          <button onClick={() => setInvertirNumeracion(!invertirNumeracion)} style={{ ...btnStyle, width: '100%', marginTop: '8px', fontSize: '10px' }}>
+            🔄 Voltear Sentido Numérico
+          </button>
+        </div>
+
+        {/* MEDIDAS INDEPENDIENTES POR PUNTO */}
+        <div style={{ ...cardStyle, backgroundColor: '#f1f5f9', border: '1px solid #1e293b' }}>
+          <label style={{ ...cardTitleStyle, color: '#1e293b' }}>📐 MEDIDAS INDEPENDIENTES POR PUNTO</label>
+          <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+            <select style={{ ...inputStyle, backgroundColor: '#fff', border: '2px solid #2563eb', fontWeight: 'bold' }} value={hitoSeleccionado || "viga-0"} onChange={e => setHitoSeleccionado(e.target.value)}>
+              {hitosOrdenados.map(h => <option key={h.keyHash} value={h.keyHash}>{h.label}</option>)}
+            </select>
+          </div>
+          <div style={{ backgroundColor: '#fff', padding: '8px', borderRadius: '4px', border: '1px solid #94a3b8', marginBottom: '10px', fontSize: '11px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Desarrollo de este Punto:</span>
+            <span style={{ fontSize: '12px', color: alertaDesarrollo.color }}>{desarrolloHitoActual} mm {alertaDesarrollo.texto}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+            <button onClick={duplicarMedidasEnTodosLosHitos} style={{ ...btnStyle, flex: 1, backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: 'bold', fontSize: '10px' }}>📋 Copiar a todo</button>
+            <button onClick={reiniciarMatrizHitos} style={{ ...btnStyle, backgroundColor: '#64748b', color: '#fff', border: 'none', fontSize: '10px' }}>🔄 Reiniciar</button>
+          </div>
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+            <button onClick={() => toggleCaraExtrema('P1')} style={{ ...btnStyle, flex: 1, backgroundColor: tieneP1 ? '#ef4444' : '#1d4ed8', color: '#fff', border: 'none', fontSize: '9.5px', fontWeight: 'bold' }}>{tieneP1 ? '🗑️ Quitar Cara P1' : '➕ Devolver Cara P1'}</button>
+            <button onClick={() => toggleCaraExtrema('ULTIMA')} style={{ ...btnStyle, flex: 1, backgroundColor: tieneUltima ? '#b91c1c' : '#2563eb', color: '#fff', border: 'none', fontSize: '9.5px', fontWeight: 'bold' }}>{tieneUltima ? '🗑️ Quitar Última' : '➕ Devolver Última'}</button>
+          </div>
+          <div style={{ maxHeight: '180px', overflowY: 'auto', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+            {plieguesHitoActual.map((p, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '5px', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', fontWeight: 'bold', width: '50px', color: '#2563eb' }}>Cara P{idx+1}:</span>
+                <input type="text" style={{ ...inputMiniStyle, flex: 1, backgroundColor: '#fdfdfd', fontWeight: 'bold' }} value={p.longitud} onChange={e => modificarPliegueDeHito(idx, 'longitud', e.target.value)} />
+                <span style={{ fontSize: '10px', color: '#64748b' }}>mm</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* PLANTILLA BASE GLOBAL */}
+        <div style={{ ...cardStyle, backgroundColor: '#fcfaf7', border: '1px solid #f39c12' }}>
+          <label style={{ ...cardTitleStyle, color: '#d35400' }}>Configuración de Caras (Plantilla Base)</label>
+          <div style={{ maxHeight: '100px', overflowY: 'auto', marginBottom: '6px' }}>
+            {pliegues.map((p, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: '3px', marginBottom: '4px', alignItems: 'center', background: '#fff', padding: '3px' }}>
+                <span style={{ fontSize: '9px', fontWeight: 'bold' }}>P{idx+1}</span>
+                <input type="text" style={{ ...inputMiniStyle, width: '45px' }} value={p.longitud} onChange={e => modificarPliegue(idx, 'longitud', e.target.value)} />
+                <input type="text" style={{ ...inputMiniStyle, width: '35px' }} value={p.angulo} onChange={e => modificarPliegue(idx, 'angulo', e.target.value)} />
+                <input type="text" style={{ ...inputMiniStyle, flex: 1 }} value={p.detalle} onChange={e => modificarPliegue(idx, 'detalle', e.target.value)} />
+                <button onClick={() => eliminarPliegue(idx)} style={{ border: 'none', background: 'transparent', color: 'red' }}>✕</button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <input type="number" style={inputMiniStyle} value={nuevoLongitud} placeholder="Long" onChange={e => setNuevoLongitud(e.target.value)} />
+            <input type="number" style={inputMiniStyle} value={nuevoAngulo} placeholder="Ang" onChange={e => setNuevoAngulo(e.target.value)} />
+            <button onClick={agregarPliegue} style={{ ...btnStyle, backgroundColor: '#f39c12', color: '#fff', border: 'none' }}>➕ Añadir</button>
+          </div>
+        </div>
+      </div>
+
+      {/* PLANO DE TRABAJO EN HOJA CARTA HORIZONTAL GRANDE */}
+      <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+        <div className="carta-contenedor" style={{ width: '816px', background: '#fff', padding: '15px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2.5px solid #f39c12', paddingBottom: '6px', marginBottom: '10px' }}>
+            <img src={logoCortiza} alt="Cortiza" style={{ width: '100px', objectFit: 'contain' }} />
+            <div style={{ textAlign: 'right' }}>
+              <h1 style={{ margin: 0, fontSize: '16px', color: '#f39c12', fontWeight: 'bold' }}>{tituloHoja}</h1>
+              <span style={{ fontSize: '10px', color: '#7f8c8d' }}>(Calibre {calibreCanal})</span>
+            </div>
+          </div>
+
+          <div style={{ color: 'red', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>{nombreEje}</div>
+
+          <div style={{ width: '100%', height: '230px', border: '1px solid #cbd5e1', backgroundColor: '#fcfcfc', borderRadius: '4px', position: 'relative' }}>
+            <svg width="100%" height="100%" viewBox="0 0 816 230">
+              {columnasCalculadas.map((col) => (
+                <g key={col.id} onContextMenu={(e) => abrirMenuColumna(e, col.id)} style={{ cursor: 'context-menu' }}>
+                  <rect x={col.x - 20} y={10} width="40" height="200" fill="transparent" />
+                  <text x={col.x} y={20} fontSize="12" fontWeight="bold" textAnchor="middle">{col.numero}</text>
+                  <line x1={col.x} y1={45} x2={col.x} y2={210} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,4" />
+                </g>
+              ))}
+
+              {Object.keys(datosGeometria).map((colId) => {
+                const geom = datosGeometria[colId];
+                return (
+                  <g key={`geom-${colId}`}>
+                    {geom.lineas.map((l, idx) => (
+                      <line key={idx} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={l.color} strokeWidth={l.width} />
+                    ))}
+                    {geom.ejesTraslapos.map((eje, tIdx) => (
+                      <g key={`eje-t-${tIdx}`}>
+                        <line x1={eje.x} y1={40} x2={eje.x} y2={210} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" />
+                        <rect x={eje.x - 10} y={eje.clickY - 10} width="20" height="20" fill="transparent" style={{ cursor: 'context-menu' }} onContextMenu={(e) => abrirMenuTraslapo(e, colId, eje.index)} />
+                        <text x={eje.x} y={eje.clickY + 4} fontSize="11" fill="blue" fontWeight="bold" textAnchor="middle">X</text>
+                      </g>
+                    ))}
+                  </g>
+                );
+              })}
+              {Object.keys(datosGeometria).map((colId) => <g key={`sosco-${colId}`}>{datosGeometria[colId].soscosSVG}</g>)}
+              {Object.keys(datosGeometria).map((colId) => (
+                <g key={`cota-planta-${colId}`}>
+                  {datosGeometria[colId].cotas.map((c, idx) => (
+                    <g key={idx}>
+                      <rect x={c.x - 12} y={c.y - 8} width="24" height="10" fill="white" fillOpacity="0.85" />
+                      <text x={c.x} y={c.y} fontSize={fuentes.cotas} fill="red" fontWeight="bold" textAnchor="middle">{c.texto}</text>
+                    </g>
+                  ))}
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          <CorteLateralCanal 
+            plieguesGlobales={pliegues}
+            matrizPliegues={matrizPliegues}
+            columnasMapeadas={columnasCalculadas}
+            configColumnas={configColumnas}
+          />
+        </div>
+      </div>
+
+      {/* --- MENU CONTEXTUAL COMPLETAMENTE RESTAURADO --- */}
+      {menuFlotante.visible && colActual && (
+        <div style={{ ...menuContextStyle, top: menuFlotante.y, left: menuFlotante.x }} onClick={e => e.stopPropagation()}>
+          
+          {!menuFlotante.esTraslapo ? (
+            <React.Fragment>
+              <div style={menuHeaderStyle}>Viga {columnasCalculadas.find(c => c.id === menuFlotante.columnaId)?.numero}</div>
+              <button onClick={() => agregarNuevoTraslapoCadena(menuFlotante.columnaId)} style={{ ...btnStyle, width: '100%', marginBottom: '8px', backgroundColor: '#e2e8f0', fontWeight: 'bold' }}>
+                ➕ Activar Traslapo a la Der.
+              </button>
+              
+              {colActual.listaTraslapos?.length > 0 && (
+                <button onClick={() => { if(window.confirm("¿Seguro de remover el último traslapo?")) eliminarUltimoTraslapo(menuFlotante.columnaId); }} style={{ ...btnStyle, width: '100%', marginBottom: '8px', backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: 'bold', border: '1px solid #fca5a5' }}>
+                  ❌ Eliminar Último Traslapo
+                </button>
+              )}
+
+              {colActual.listaTraslapos?.length === 0 && (
+                <React.Fragment>
+                  <label style={itemMenuLabelStyle}>
+                    <input type="checkbox" checked={colActual.unirDerecha} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'unirDerecha', e.target.checked)} /> 
+                    Unir con Col. Derecha
+                  </label>
+                  {colActual.unirDerecha && (
+                    <div style={subSeccionStyle}>
+                      <label style={labelMiniStyle}>Long. Tramo (mm):</label>
+                      <input type="text" style={inputMiniStyle} value={colActual.longitudDerecha} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'longitudDerecha', e.target.value)} />
+                      <label style={labelMiniStyle}>Pendiente (°):</label>
+                      <input type="text" style={inputMiniStyle} value={colActual.pendiente} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'pendiente', e.target.value)} />
+                    </div>
+                  )}
+                </React.Fragment>
+              )}
+
+              <div style={seccionSeparadorStyle}>
+                <span style={seccionTituloMiniStyle}>ZONAS PLANAS (mm)</span>
+                <div style={{ display: 'flex', gap: '3px' }}>
+                  <div>
+                    <label style={labelMiniStyle}>Izq:</label>
+                    <input type="text" style={inputMiniStyle} value={colActual.planaIzquierda || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaIzquierda', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={labelMiniStyle}>Cent:</label>
+                    <input type="text" style={inputMiniStyle} value={colActual.planaCentro || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaCentro', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={labelMiniStyle}>Der:</label>
+                    <input type="text" style={inputMiniStyle} value={colActual.planaDerecha || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaDerecha', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={seccionSeparadorStyle}>
+                <span style={seccionTituloMiniStyle}>ACCESORIOS DE SOSCOS</span>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={labelMiniStyle}>Ø Cota:</label>
+                  <select style={{ fontSize: '10px', padding: '1px' }} value={colActual.diametroSosco || '4"'} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'diametroSosco', e.target.value)}>
+                    <option value='3"'>3"</option>
+                    <option value='4"'>4"</option>
+                    <option value='6"'>6"</option>
+                  </select>
+                </div>
+                <label style={itemMenuLabelStyle}><input type="radio" name="soscoGroup" checked={!!colActual.soscoCentro} onChange={() => setSoscoType('c')} /> Sosco Central</label>
+                <label style={itemMenuLabelStyle}><input type="radio" name="soscoGroup" checked={!!colActual.soscoIzquierdo} onChange={() => setSoscoType('i')} /> Sosco Izquierdo</label>
+                <label style={itemMenuLabelStyle}><input type="radio" name="soscoGroup" checked={!!colActual.soscoDerecho} onChange={() => setSoscoType('d')} /> Sosco Derecho</label>
+                <label style={itemMenuLabelStyle}><input type="radio" name="soscoGroup" checked={!!colActual.dosSoscos} onChange={() => setSoscoType('dos')} /> Dos Soscos</label>
+                <button style={{ fontSize: '9px', padding: '2px', marginTop: '4px', cursor: 'pointer' }} onClick={() => setSoscoType('n')}>Quitar Bajantes</button>
+              </div>
+            </React.Fragment>
+          ) : (
+            <React.Fragment>
+              <div style={menuHeaderStyle}>Traslapo (X)</div>
+              <button onClick={() => eliminarTraslapoEspecifico(menuFlotante.columnaId, menuFlotante.traslapoIndex)} style={{ ...btnStyle, width: '100%', backgroundColor: '#ef4444', color: '#fff' }}>🗑️ Eliminar Traslapo</button>
+              <div style={{ marginTop: '6px' }}>
+                <label style={labelMiniStyle}>Longitud (mm):</label>
+                <input type="text" style={inputMiniStyle} value={traslapoActual?.longitud || ''} onChange={e => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'longitud', e.target.value)} />
+                <label style={labelMiniStyle}>Pendiente (°):</label>
+                <input type="text" style={inputMiniStyle} value={traslapoActual?.pendiente || ''} onChange={e => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'pendiente', e.target.value)} />
+              </div>
+              <div style={seccionSeparadorStyle}>
+                <span style={seccionTituloMiniStyle}>DESTINO DE SALIDA</span>
+                <label style={itemMenuLabelStyle}><input type="radio" name="destinoGroup" checked={traslapoActual?.conectarA === 'traslapo'} onChange={() => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'conectarA', 'traslapo')} /> Encadenar otro Traslapo</label>
+                <label style={itemMenuLabelStyle}><input type="radio" name="destinoGroup" checked={traslapoActual?.conectarA === 'columna'} onChange={() => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'conectarA', 'columna')} /> Cerrar Tramo a Col. Derecha</label>
+              </div>
+              {traslapoActual?.conectarA === 'traslapo' && (
+                <button onClick={() => agregarNuevoTraslapoCadena(menuFlotante.columnaId)} style={{ ...btnStyle, width: '100%', marginTop: '6px', backgroundColor: '#e2e8f0', fontSize: '10px' }}>➕ Insertar Siguiente X</button>
+              )}
+              {traslapoActual?.conectarA === 'columna' && (
+                <div style={subSeccionStyle}>
+                  <label style={labelMiniStyle}>Long. Cierre (mm):</label>
+                  <input type="text" style={inputMiniStyle} value={traslapoActual?.longitudCierre || ''} onChange={(e) => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'longitudCierre', e.target.value)} />
+                  <label style={labelMiniStyle}>Pendiente Final (°):</label>
+                  <input type="text" style={inputMiniStyle} value={traslapoActual?.pendienteCierre || ''} onChange={(e) => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'pendienteCierre', e.target.value)} />
+                </div>
+              )}
+            </React.Fragment>
+          )}
+          <button onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })} style={{ ...btnStyle, width: '100%', marginTop: '8px', backgroundColor: '#f39c12', color: '#fff', border: 'none' }}>Aplicar</button>
+        </div>
+      )}
+
+      {/* --- MODAL CARGA --- */}
+      {modalAbierto && (
+        <div style={modalOverlayStyle}>
+          <div style={modalBodyStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee' }}>
+              <h4 style={{ margin: 0 }}>Abrir Canal Guardada</h4>
+              <button onClick={() => setModalAbierto(false)} style={{ border: 'none', background: 'transparent' }}>✕</button>
+            </div>
+            <div style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '10px' }}>
+              {listaProyectos.map(p => (
+                <div key={p.id} style={proyectoItemStyle} onClick={() => cargarProyectoEspecifico(p)}>
+                  <span style={{ fontWeight: 'bold', color: '#2563eb' }}>{p.nombre_proyecto}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+const menuContextStyle = { position: 'fixed', backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '10px', zIndex: 3000, width: '220px' };
+const subSeccionStyle = { paddingLeft: '5px', borderLeft: '2px solid #cbd5e1', marginTop: '4px' };
+const menuHeaderStyle = { fontWeight: 'bold', fontSize: '11px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', marginBottom: '6px', color: '#1e293b' };
+const itemMenuLabelStyle = { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', margin: '3px 0', cursor: 'pointer' };
+const seccionSeparadorStyle = { borderTop: '1px solid #e2e8f0', paddingTop: '4px', marginTop: '6px' };
+const seccionTituloMiniStyle = { fontSize: '9px', fontWeight: 'bold', color: '#64748b', display: 'block' };
+const labelMiniStyle = { fontSize: '10px', color: '#475569', marginTop: '3px' };
+const inputMiniStyle = { padding: '3px', fontSize: '11px', border: '1px solid #cbd5e1', borderRadius: '4px', boxSizing: 'border-box', width: '100%' };
+const btnStyle = { padding: '5px 8px', fontSize: '11px', cursor: 'pointer', border: '1px solid #cbd5e1', borderRadius: '4px' };
+const inputStyle = { width: '100%', padding: '5px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' };
+const labelTitleStyle = { fontSize: '10px', fontWeight: 'bold', color: '#475569', display: 'block', marginTop: '5px', marginBottom: '2px' };
+const cardStyle = { background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', marginTop: '10px', borderRadius: '6px' };
+const cardTitleStyle = { fontSize: '10.5px', fontWeight: 'bold', color: '#1e293b', textTransform: 'uppercase' };
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 4000 };
+const modalBodyStyle = { backgroundColor: '#fff', padding: '15px', borderRadius: '6px', width: '350px' };
+const proyectoItemStyle = { padding: '6px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' };
+
+export default DisenadorCanales;
