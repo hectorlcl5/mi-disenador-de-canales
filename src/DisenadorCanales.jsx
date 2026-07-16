@@ -4,19 +4,30 @@ import logoCortiza from './logo-cortiza.png';
 import CorteLateralCanal from './CorteLateralCanal';
 
 const DisenadorCanales = () => {
-  // --- ESTADOS PRINCIPALES DE CONFIGURACIÓN ---
+  // ==========================================
+  // 1. ESTADOS DE CONFIGURACIÓN PRINCIPAL
+  // ==========================================
   const [projectId, setProjectId] = useState(null);
   const [nombreArchivo, setNombreArchivo] = useState("Canales_xxxx");
   const [tituloHoja, setTituloHoja] = useState("DISEÑO PARA FABRICACIÓN DE CANALES CUBIERTA BODEGA");
   const [nombreEje, setNombreEje] = useState("Canal eje A");
-  const [numColumnasInput, setNumColumnasInput] = useState("6"); 
-  const [numColumnas, setNumColumnas] = useState(6); 
+  const [numColumnasInput, setNumColumnasInput] = useState("6");
+  const [numColumnas, setNumColumnas] = useState(6);
   const [calibreCanal, setCalibreCanal] = useState("20");
+  
+  // ESTADOS DE ANOTACIÓN TÉCNICA
+  const [colorInterior, setColorInterior] = useState("Blanco"); 
+  const [anchoAbertura, setAnchoAbertura] = useState("530");
+  const [ladoAbrir, setLadoAbrir] = useState("ninguno"); 
+  const [ladoCubierta, setLadoCubierta] = useState("ninguno"); // NUEVO ESTADO LADO CUBIERTA
+
   const [invertirNumeracion, setInvertirNumeracion] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [configColumnas, setConfigColumnas] = useState({});
 
-  // --- ESTADOS DOBLECES Y CONTROL DE MATRIZ TRIDIMENSIONAL ---
+  // ==========================================
+  // 2. ESTADOS DE DOBLECES Y MATRIZ 3D
+  // ==========================================
   const [pliegues, setPliegues] = useState([
     { longitud: 80, angulo: 90, detalle: "Pestaña" },
     { longitud: 220, angulo: 105, detalle: "Aleta Izq" },
@@ -31,15 +42,23 @@ const DisenadorCanales = () => {
   const [matrizPliegues, setMatrizPliegues] = useState({});
   const [hitoSeleccionado, setHitoSeleccionado] = useState("viga-0");
 
-  // --- CONTROL MODALES INTERFAZ ---
+  // ==========================================
+  // 3. ESTADOS DE INTERFAZ Y MODALES
+  // ==========================================
   const [modalAbierto, setModalAbierto] = useState(false);
   const [listaProyectos, setListaProyectos] = useState([]);
   const [cargandoLista, setCargandoLista] = useState(false);
-  const [menuFlotante, setMenuFlotante] = useState({ visible: false, x: 0, y: 0, columnaId: null, esTraslapo: false, traslapoIndex: null });
+  const [menuFlotante, setMenuFlotante] = useState({ 
+    visible: false, x: 0, y: 0, columnaId: null, esTraslapo: false, traslapoIndex: null 
+  });
 
   const tieneP1 = pliegues.some(p => p.detalle === "Pestaña" || p.detalle === "Pestaña Recuperada");
   const tieneUltima = pliegues.some(p => p.detalle === "Pestaña Cubierta" || p.detalle === "Cubierta Recuperada");
 
+  // ==========================================
+  // 4. EFECTOS (USEEFFECTS)
+  // ==========================================
+  
   useEffect(() => {
     if (numColumnasInput !== "") {
       const valor = parseInt(numColumnasInput);
@@ -56,7 +75,7 @@ const DisenadorCanales = () => {
           unirDerecha: false, longitudDerecha: 2000, pendiente: 0,
           planaCentro: 0, planaDerecha: 0, planaIzquierda: 0,
           soscoCentro: false, soscoIzquierdo: false, soscoDerecho: false, dosSoscos: false,
-          diametroSosco: '4"', listaTraslapos: [] 
+          diametroSosco: '4"', listaTraslapos: []
         };
         huboCambio = true;
       }
@@ -64,7 +83,6 @@ const DisenadorCanales = () => {
     if (huboCambio) setConfigColumnas(nuevaConfig);
   }, [numColumnas]);
 
-  // Sincronizar matriz con los pliegues globales existentes
   useEffect(() => {
     const nuevaMatriz = { ...matrizPliegues };
     let actualizo = false;
@@ -78,10 +96,15 @@ const DisenadorCanales = () => {
     if (actualizo) setMatrizPliegues(nuevaMatriz);
   }, [pliegues, numColumnas, configColumnas]);
 
+
+  // ==========================================
+  // 5. FUNCIONES GEOMÉTRICAS Y DE HITOS
+  // ==========================================
   const generarColumnasLineales = () => {
     const cols = [];
-    const anchoMaxSvn = 816; 
-    const anchoVisualPartePlana = 25; 
+    // AUMENTAMOS EL ANCHO MAXIMO A 1000 PARA APROVECHAR LA HOJA CARTA HORIZONTAL
+    const anchoMaxSvn = 1000; 
+    const anchoVisualPartePlana = 25;
 
     const colInicialConfig = configColumnas[0] || {};
     const colFinalConfig = configColumnas[numColumnas - 1] || {};
@@ -116,10 +139,28 @@ const DisenadorCanales = () => {
     });
     return hitos;
   };
-  
+
   const hitosOrdenados = obtenerHitosOrdenados();
 
-  // --- ACCIONES SOBRE PLIEGUES GLOBALES Y MATRIZ ---
+
+  // ==========================================
+  // 6. FUNCIONES CRUD (DOBLECES Y MATRIZ)
+  // ==========================================
+  const restaurarPlantillaEstandar = () => {
+    if (window.confirm("¿Seguro que deseas restaurar la canal a las 5 caras estándar? Perderás los ángulos y medidas actuales.")) {
+      const plieguesEstandar = [
+        { longitud: 80, angulo: 90, detalle: "Pestaña" },
+        { longitud: 220, angulo: 105, detalle: "Aleta Izq" },
+        { longitud: 350, angulo: 90, detalle: "Fondo" },
+        { longitud: 120, angulo: 75, detalle: "Aleta Der" },
+        { longitud: 40, angulo: 0, detalle: "Pestaña Cubierta" }
+      ];
+      setPliegues(plieguesEstandar);
+      setMatrizPliegues({}); 
+      setMensaje("✅ Plantilla de 5 caras estándar restaurada.");
+    }
+  };
+
   const agregarPliegue = () => {
     if (!nuevoLongitud) return;
     setPliegues([...pliegues, { longitud: parseFloat(nuevoLongitud) || 0, angulo: parseFloat(nuevoAngulo) || 0, detalle: nuevoDetalle }]);
@@ -127,12 +168,15 @@ const DisenadorCanales = () => {
   };
 
   const eliminarPliegue = (index) => {
-    const copia = [...pliegues]; copia.splice(index, 1); setPliegues(copia);
+    const copia = [...pliegues]; 
+    copia.splice(index, 1); 
+    setPliegues(copia);
   };
 
   const toggleCaraExtrema = (tipo) => {
     const copiaPliegues = [...pliegues];
     const copiaMatriz = { ...matrizPliegues };
+
     if (tipo === 'P1') {
       if (tieneP1) {
         copiaPliegues.shift();
@@ -156,11 +200,14 @@ const DisenadorCanales = () => {
         setMensaje("➕ Última cara reincorporada.");
       }
     }
-    setPliegues(copiaPliegues); setMatrizPliegues(copiaMatriz);
+    setPliegues(copiaPliegues); 
+    setMatrizPliegues(copiaMatriz);
   };
 
   const modificarPliegue = (index, campo, valor) => {
-    const copia = [...pliegues]; copia[index] = { ...copia[index], [campo]: valor }; setPliegues(copia);
+    const copia = [...pliegues]; 
+    copia[index] = { ...copia[index], [campo]: valor }; 
+    setPliegues(copia);
   };
 
   const modificarPliegueDeHito = (index, campo, valor) => {
@@ -178,23 +225,40 @@ const DisenadorCanales = () => {
     setMensaje("📋 Medidas copiadas a toda la obra.");
   };
 
-  const reiniciarMatrizHitos = () => { setMatrizPliegues({}); setMensaje("🗑️ Restablecido a plantilla base."); };
+  const reiniciarMatrizHitos = () => { 
+    setMatrizPliegues({}); 
+    setMensaje("🗑️ Restablecido a plantilla base."); 
+  };
 
+
+  // ==========================================
+  // 7. VARIABLES DE APOYO Y ESTADÍSTICAS
+  // ==========================================
   const plieguesHitoActual = matrizPliegues[hitoSeleccionado] || pliegues.map(p => ({ ...p }));
   const desarrolloHitoActual = plieguesHitoActual.reduce((s, p) => s + (parseFloat(p.longitud) || 0), 0);
-  const alertaDesarrollo = desarrolloHitoActual < 1000 ? { color: '#16a34a', texto: '✅ (Estándar 1m)' } : desarrolloHitoActual < 1200 ? { color: '#ea580c', texto: '⚠️ (Especial 1.2m)' } : { color: '#dc2626', texto: '🚨 EXCEDE MÁXIMO' };
+  const alertaDesarrollo = desarrolloHitoActual < 1000 
+    ? { color: '#16a34a', texto: '✅ (Estándar 1m)' } 
+    : desarrolloHitoActual < 1200 
+      ? { color: '#ea580c', texto: '⚠️ (Especial 1.2m)' } 
+      : { color: '#dc2626', texto: '🚨 EXCEDE MÁXIMO' };
 
-  // --- CRUD SUPABASE ---
+
+  // ==========================================
+  // 8. COMUNICACIÓN CON BD (SUPABASE)
+  // ==========================================
   const guardarCanalDB = async () => {
-    setMensaje("Guardando en base de datos PostgreSQL...");
+    setMensaje("Guardando en BD...");
     const payload = {
       nombre_proyecto: nombreArchivo,
-      tramos: { modulo: "canales", tituloHoja, nombreEje, numColumnas, calibreCanal, invertirNumeracion, configColumnas, pliegues, matrizPliegues },
+      tramos: { modulo: "canales", tituloHoja, nombreEje, numColumnas, calibreCanal, invertirNumeracion, configColumnas, pliegues, matrizPliegues, colorInterior, anchoAbertura, ladoAbrir, ladoCubierta },
       ultima_actualizacion: new Date()
     };
-    let res = projectId ? await supabase.from('diseños_canales').update(payload).eq('id', projectId) : await supabase.from('diseños_canales').insert([payload]).select();
+    let res = projectId 
+      ? await supabase.from('diseños_canales').update(payload).eq('id', projectId) 
+      : await supabase.from('diseños_canales').insert([payload]).select();
+    
     if (!res.error && res.data?.length > 0) setProjectId(res.data[0].id);
-    setMensaje(res.error ? "❌ Error de guardado" : "✅ Respaldo exitoso en la nube");
+    setMensaje(res.error ? "❌ Error de guardado" : "✅ Respaldo exitoso");
   };
 
   const abrirModalCarga = async () => {
@@ -206,39 +270,63 @@ const DisenadorCanales = () => {
 
   const cargarProyectoEspecifico = (p) => {
     const info = p.tramos;
-    setProjectId(p.id); setNombreArchivo(p.nombre_proyecto); setTituloHoja(info.tituloHoja || ""); setNombreEje(info.nombreEje || "");
-    setNumColumnasInput((info.numColumnas || 6).toString()); setNumColumnas(info.numColumnas || 6); setCalibreCanal(info.calibreCanal || "20");
-    setInvertirNumeracion(!!info.invertirNumeracion); setConfigColumnas(info.configColumnas || {});
+    setProjectId(p.id); 
+    setNombreArchivo(p.nombre_proyecto); 
+    setTituloHoja(info.tituloHoja || ""); 
+    setNombreEje(info.nombreEje || "");
+    setNumColumnasInput((info.numColumnas || 6).toString()); 
+    setNumColumnas(info.numColumnas || 6); 
+    setCalibreCanal(info.calibreCanal || "20");
+    setColorInterior(info.colorInterior || "Blanco");
+    setAnchoAbertura(info.anchoAbertura || "530");
+    setLadoAbrir(info.ladoAbrir || "ninguno");
+    setLadoCubierta(info.ladoCubierta || "ninguno");
+    setInvertirNumeracion(!!info.invertirNumeracion); 
+    setConfigColumnas(info.configColumnas || {});
+    
     if (info.pliegues) setPliegues(info.pliegues);
     if (info.matrizPliegues) setMatrizPliegues(info.matrizPliegues);
-    setModalAbierto(false); setMensaje("✅ Diseño cargado");
+    
+    setModalAbierto(false); 
+    setMensaje("✅ Diseño cargado");
   };
 
-  // --- MANEJO DE VISTA DE PLANTA Y MENÚS (CON RESTRICCIÓN DE 6000MM RESTAURADA) ---
-  const abrirMenuColumna = (e, colId) => { e.preventDefault(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: false, traslapoIndex: null }); };
-  const abrirMenuTraslapo = (e, colId, index) => { e.preventDefault(); e.stopPropagation(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: true, traslapoIndex: index }); };
 
-  const actualizarPropiedadColumna = (colId, campo, valor) => { 
+  // ==========================================
+  // 9. FUNCIONES DE MENÚ CONTEXTUAL (PLANTA)
+  // ==========================================
+  const abrirMenuColumna = (e, colId) => { 
+    e.preventDefault(); 
+    setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: false, traslapoIndex: null }); 
+  };
+  
+  const abrirMenuTraslapo = (e, colId, index) => { 
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: true, traslapoIndex: index }); 
+  };
+
+  const actualizarPropiedadColumna = (colId, campo, valor) => {
     let valorFinal = valor;
     if (campo === 'longitudDerecha') {
       if (parseFloat(valor) > 6000) {
         valorFinal = "6000";
-        setMensaje("⚠️ Línea máxima es 6000 mm. Debes activar otra división de traslapo.");
+        setMensaje("⚠️ Línea máxima es 6000 mm.");
       } else {
-        setMensaje(""); // Limpia advertencias si está dentro del límite
+        setMensaje("");
       }
     }
-    setConfigColumnas(prev => ({ ...prev, [colId]: { ...prev[colId], [campo]: valorFinal } })); 
+    setConfigColumnas(prev => ({ ...prev, [colId]: { ...prev[colId], [campo]: valorFinal } }));
   };
-  
+
   const actualizarPropiedadTraslapo = (colId, index, campo, valor) => {
     let valorFinal = valor;
     if (campo === 'longitud' || campo === 'longitudCierre') {
       if (parseFloat(valor) > 6000) {
         valorFinal = "6000";
-        setMensaje("⚠️ El traslapo máximo es 6000 mm. Agrega un traslapo adicional.");
+        setMensaje("⚠️ Traslapo máximo 6000 mm.");
       } else {
-        setMensaje(""); // Limpia advertencias
+        setMensaje("");
       }
     }
     setConfigColumnas(prev => {
@@ -247,7 +335,7 @@ const DisenadorCanales = () => {
       return { ...prev, [colId]: { ...prev[colId], listaTraslapos: listaOriginal } };
     });
   };
-  
+
   const agregarNuevoTraslapoCadena = (colId) => {
     setConfigColumnas(prev => {
       const listaOriginal = [...(prev[colId]?.listaTraslapos || [])];
@@ -256,7 +344,7 @@ const DisenadorCanales = () => {
     });
     setMenuFlotante({ ...menuFlotante, visible: false });
   };
-  
+
   const eliminarTraslapoEspecifico = (colId, index) => {
     setConfigColumnas(prev => {
       const listaOriginal = [...(prev[colId]?.listaTraslapos || [])];
@@ -290,7 +378,9 @@ const DisenadorCanales = () => {
 
   const fuentes = numColumnas <= 6 ? { cotas: 9.5, soscos: 8, columnas: 13 } : numColumnas <= 12 ? { cotas: 8, soscos: 7, columnas: 11 } : { cotas: 6.5, soscos: 5.5, columnas: 9 };
 
-  // --- MOTOR GEOMÉTRICO PLANTA ---
+  // ==========================================
+  // 10. MOTOR GEOMÉTRICO PLANTA (SVG)
+  // ==========================================
   const datosGeometria = (() => {
     let puntosEstructura = {};
     let yActual = 75;
@@ -346,7 +436,7 @@ const DisenadorCanales = () => {
 
         if (listaT.length > 0) {
           const totalSegmentos = listaT.length + (listaT[listaT.length - 1].conectarA === 'columna' ? 1 : 0);
-          const pixelMinimoGarantizado = Math.max(14, 22 - (numColumnas * 0.3)); 
+          const pixelMinimoGarantizado = Math.max(14, 22 - (numColumnas * 0.3));
           const pixelesFijosReservados = totalSegmentos * pixelMinimoGarantizado;
           const pixelesRemanentesProporcionales = Math.max(0, anchoMaxDisponibleX - pixelesFijosReservados);
 
@@ -392,24 +482,54 @@ const DisenadorCanales = () => {
   })();
 
   const colActual = menuFlotante.columnaId !== null ? configColumnas[menuFlotante.columnaId] : null;
-  const traslapoActual = (menuFlotante.esTraslapo && colActual && colActual.listaTraslapos && menuFlotante.traslapoIndex !== null) ? colActual.listaTraslapos[menuFlotante.traslapoIndex] : null;
+  const traslapoActual = (menuFlotante.esTraslapo && colActual && colActual.listaTraslapos && menuFlotante.traslapoIndex !== null) 
+    ? colActual.listaTraslapos[menuFlotante.traslapoIndex] 
+    : null;
 
+
+  // ==========================================
+  // RENDERIZADO PRINCIPAL
+  // ==========================================
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Arial', backgroundColor: '#f0f2f5' }} onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })}>
       
-      {/* 🎛️ PANEL UNIFICADO IZQUIERDO DE CONTROL INDUSTRIAL */}
-      <div className="no-print" style={{ width: '430px', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '15px', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
-          <button style={btnStyle} onClick={() => { setProjectId(null); setConfigColumnas({}); setNumColumnasInput("6"); setNumColumnas(6); setMatrizPliegues({}); setMensaje("✨ Restablecido"); }}>Nuevo</button>
-          <button style={btnStyle} onClick={abrirModalCarga}>Abrir</button>
-          <button style={{ ...btnStyle, backgroundColor: '#28a745', color: '#fff' }} onClick={guardarCanalDB}>Guardar</button>
-          <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff' }}>Imprimir</button>
+      {/* 🚀 INYECCIÓN DE ESTILOS DE IMPRESIÓN AJUSTADOS A 1000px */}
+      <style>
+        {`
+          @media print {
+            .no-print { display: none !important; }
+            body, html { background-color: white !important; margin: 0 !important; padding: 0 !important; }
+            @page { 
+              size: letter landscape; 
+              margin: 0.5cm; 
+            }
+            .carta-contenedor {
+              width: 100% !important;
+              max-width: 1000px !important; /* Limite estricto para encajar en hoja horizontal */
+              margin: 0 auto !important;
+              padding: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              page-break-after: avoid !important;
+            }
+            * { overflow: visible !important; }
+          }
+        `}
+      </style>
+
+      {/* ============================================================== */}
+      {/* 🎛️ PANEL IZQUIERDO: HERRAMIENTAS                                 */}
+      {/* ============================================================== */}
+      <div className="no-print" style={{ width: '215px', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '10px', boxSizing: 'border-box' }}>
+        
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '12px', flexWrap: 'wrap' }}>
+          <button style={{ ...btnStyle, flex: 1 }} onClick={() => { setProjectId(null); setConfigColumnas({}); setNumColumnasInput("6"); setNumColumnas(6); setMatrizPliegues({}); setMensaje("✨ Restablecido"); }}>Nuevo</button>
+          <button style={{ ...btnStyle, flex: 1 }} onClick={abrirModalCarga}>Abrir</button>
+          <button style={{ ...btnStyle, backgroundColor: '#28a745', color: '#fff', flex: '1 1 40%' }} onClick={guardarCanalDB}>Guardar</button>
+          <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff', flex: '1 1 40%' }}>Imprimir</button>
         </div>
 
-        {/* ALERTA VISUAL DINÁMICA: Si es advertencia o error, se pone rojo */}
-        <p style={{ color: mensaje.includes("⚠️") || mensaje.includes("❌") || mensaje.includes("🚨") ? '#dc2626' : '#2563eb', fontSize: '11px', fontWeight: 'bold', margin: '4px 0' }}>
-          {mensaje}
-        </p>
+        <p style={{ color: mensaje.includes("⚠️") || mensaje.includes("❌") || mensaje.includes("🚨") ? '#dc2626' : '#2563eb', fontSize: '11px', fontWeight: 'bold', margin: '4px 0' }}>{mensaje}</p>
 
         <label style={labelTitleStyle}>PROYECTO / ARCHIVO:</label>
         <input type="text" style={{ ...inputStyle, marginBottom: '8px' }} value={nombreArchivo} onChange={e => setNombreArchivo(e.target.value)} />
@@ -421,100 +541,144 @@ const DisenadorCanales = () => {
         <input type="text" style={{ ...inputStyle, marginBottom: '8px', color: 'red', fontWeight: 'bold' }} value={nombreEje} onChange={e => setNombreEje(e.target.value)} />
 
         <div style={cardStyle}>
-          <label style={cardTitleStyle}>Estructura y Calibres</label>
-          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '10px' }}>N° Vigas:</label>
+          <label style={{ ...cardTitleStyle, fontSize: '9.5px' }}>Estructura y Calibres</label>
+          <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 45%' }}>
+              <label style={{ fontSize: '9px' }}>N° Vigas:</label>
               <input type="number" style={inputStyle} value={numColumnasInput} onChange={e => setNumColumnasInput(e.target.value)} />
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '10px' }}>Calibre:</label>
-              <select style={inputStyle} value={calibreCanal} onChange={e => setCalibreCanal(e.target.value)}>
+            <div style={{ flex: '1 1 45%' }}>
+              <label style={{ fontSize: '9px' }}>Calibre:</label>
+              <select style={{ ...inputStyle, padding: '4px' }} value={calibreCanal} onChange={e => setCalibreCanal(e.target.value)}>
                 <option value="18">Cal. 18</option>
                 <option value="20">Cal. 20</option>
                 <option value="22">Cal. 22</option>
               </select>
             </div>
           </div>
-          <button onClick={() => setInvertirNumeracion(!invertirNumeracion)} style={{ ...btnStyle, width: '100%', marginTop: '8px', fontSize: '10px' }}>
-            🔄 Voltear Sentido Numérico
-          </button>
+          <button onClick={() => setInvertirNumeracion(!invertirNumeracion)} style={{ ...btnStyle, width: '100%', marginTop: '8px', fontSize: '9px' }}>🔄 Voltear Sentido Numérico</button>
         </div>
 
-        {/* 📐 MEDIDAS INDEPENDIENTES POR PUNTO */}
         <div style={{ ...cardStyle, backgroundColor: '#f1f5f9', border: '1px solid #1e293b' }}>
-          <label style={{ ...cardTitleStyle, color: '#1e293b' }}>📐 MEDIDAS INDEPENDIENTES POR PUNTO</label>
+          <label style={{ ...cardTitleStyle, color: '#1e293b', fontSize: '9.5px' }}>📐 MEDIDAS POR PUNTO</label>
+          
           <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-            <select style={{ ...inputStyle, backgroundColor: '#fff', border: '2px solid #2563eb', fontWeight: 'bold' }} value={hitoSeleccionado || "viga-0"} onChange={e => setHitoSeleccionado(e.target.value)}>
+            <select style={{ ...inputStyle, backgroundColor: '#fff', border: '2px solid #2563eb', fontWeight: 'bold', fontSize: '10px' }} value={hitoSeleccionado || "viga-0"} onChange={e => setHitoSeleccionado(e.target.value)}>
               {hitosOrdenados.map(h => <option key={h.keyHash} value={h.keyHash}>{h.label}</option>)}
             </select>
           </div>
-          <div style={{ backgroundColor: '#fff', padding: '8px', borderRadius: '4px', border: '1px solid #94a3b8', marginBottom: '10px', fontSize: '11px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Desarrollo de este Punto:</span>
-            <span style={{ fontSize: '12px', color: alertaDesarrollo.color }}>{desarrolloHitoActual} mm {alertaDesarrollo.texto}</span>
+          
+          <div style={{ backgroundColor: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #94a3b8', marginBottom: '8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span>Desarrollo:</span>
+            <span style={{ fontSize: '11px', color: alertaDesarrollo.color }}>{desarrolloHitoActual} mm {alertaDesarrollo.texto}</span>
           </div>
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
-            <button onClick={duplicarMedidasEnTodosLosHitos} style={{ ...btnStyle, flex: 1, backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: 'bold', fontSize: '10px' }}>📋 Copiar a todo</button>
-            <button onClick={reiniciarMatrizHitos} style={{ ...btnStyle, backgroundColor: '#64748b', color: '#fff', border: 'none', fontSize: '10px' }}>🔄 Reiniciar</button>
+          
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', flexDirection: 'column' }}>
+            <button onClick={duplicarMedidasEnTodosLosHitos} style={{ ...btnStyle, backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: 'bold', fontSize: '9.5px' }}>📋 Copiar a todo</button>
+            <button onClick={reiniciarMatrizHitos} style={{ ...btnStyle, backgroundColor: '#64748b', color: '#fff', border: 'none', fontSize: '9.5px' }}>🔄 Reiniciar</button>
           </div>
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
-            <button onClick={() => toggleCaraExtrema('P1')} style={{ ...btnStyle, flex: 1, backgroundColor: tieneP1 ? '#ef4444' : '#1d4ed8', color: '#fff', border: 'none', fontSize: '9.5px', fontWeight: 'bold' }}>{tieneP1 ? '🗑️ Quitar Cara P1' : '➕ Devolver Cara P1'}</button>
-            <button onClick={() => toggleCaraExtrema('ULTIMA')} style={{ ...btnStyle, flex: 1, backgroundColor: tieneUltima ? '#b91c1c' : '#2563eb', color: '#fff', border: 'none', fontSize: '9.5px', fontWeight: 'bold' }}>{tieneUltima ? '🗑️ Quitar Última' : '➕ Devolver Última'}</button>
+          
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px', flexDirection: 'column' }}>
+            <button onClick={() => toggleCaraExtrema('P1')} style={{ ...btnStyle, backgroundColor: tieneP1 ? '#ef4444' : '#1d4ed8', color: '#fff', border: 'none', fontSize: '9px', fontWeight: 'bold' }}>{tieneP1 ? '🗑️ Quitar Cara P1' : '➕ Devolver Cara P1'}</button>
+            <button onClick={() => toggleCaraExtrema('ULTIMA')} style={{ ...btnStyle, backgroundColor: tieneUltima ? '#b91c1c' : '#2563eb', color: '#fff', border: 'none', fontSize: '9px', fontWeight: 'bold' }}>{tieneUltima ? '🗑️ Quitar Última' : '➕ Devolver Última'}</button>
           </div>
-          <div style={{ maxHeight: '180px', overflowY: 'auto', background: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+          
+          <div style={{ maxHeight: '150px', overflowY: 'auto', background: '#fff', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
             {plieguesHitoActual.map((p, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '5px', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', fontWeight: 'bold', width: '50px', color: '#2563eb' }}>Cara P{idx+1}:</span>
+              <div key={idx} style={{ display: 'flex', gap: '3px', marginBottom: '4px', alignItems: 'center' }}>
+                <span style={{ fontSize: '9px', fontWeight: 'bold', width: '35px', color: '#2563eb' }}>P{idx+1}:</span>
                 <input type="text" style={{ ...inputMiniStyle, flex: 1, backgroundColor: '#fdfdfd', fontWeight: 'bold' }} value={p.longitud} onChange={e => modificarPliegueDeHito(idx, 'longitud', e.target.value)} />
-                <span style={{ fontSize: '10px', color: '#64748b' }}>mm</span>
+                <span style={{ fontSize: '9px', color: '#64748b' }}>mm</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* PLANTILLA BASE GLOBAL */}
+        {/* ========================================================= */}
+        {/* PLANTILLA BASE CON SELECTOR DE COLOR Y ANOTACIONES        */}
+        {/* ========================================================= */}
         <div style={{ ...cardStyle, backgroundColor: '#fcfaf7', border: '1px solid #f39c12' }}>
-          <label style={{ ...cardTitleStyle, color: '#d35400' }}>Configuración de Caras (Plantilla Base)</label>
+          <label style={{ ...cardTitleStyle, color: '#d35400', fontSize: '9.5px' }}>Plantilla Base (Caras)</label>
+          
+          <button 
+            onClick={restaurarPlantillaEstandar} 
+            style={{ ...btnStyle, width: '100%', marginTop: '6px', marginBottom: '6px', backgroundColor: '#fef08a', color: '#854d0e', border: '1px solid #eab308', fontWeight: 'bold' }}
+          >
+            🔄 Restaurar 5 Caras Estándar
+          </button>
+
+          <div style={{ borderTop: '1px solid #fcd34d', borderBottom: '1px solid #fcd34d', padding: '6px 0', marginBottom: '6px', marginTop: '4px' }}>
+            
+            <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginBottom: '2px' }}>Acabado de Color:</label>
+            <select style={{ ...inputMiniStyle, fontSize: '10px' }} value={colorInterior} onChange={e => setColorInterior(e.target.value)}>
+              <option value="Blanco">Interior Blanco / Exterior Gris</option>
+              <option value="Gris">Interior Gris / Exterior Blanco</option>
+            </select>
+
+            {/* NUEVO SELECTOR PARA "LADO CUBIERTA" EN VISTA 2 */}
+            <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Lado Cubierta:</label>
+            <select style={{ ...inputMiniStyle, fontSize: '10px' }} value={ladoCubierta} onChange={e => setLadoCubierta(e.target.value)}>
+              <option value="ninguno">Ninguno</option>
+              <option value="P1">Pestaña P1 (Arriba)</option>
+              <option value="P_ULTIMA">Última Pestaña (Abajo)</option>
+            </select>
+
+            <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Ancho de Abertura (mm):</label>
+            <input type="text" style={{ ...inputMiniStyle, fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }} value={anchoAbertura} onChange={e => setAnchoAbertura(e.target.value)} placeholder="Ej. 530" />
+
+            <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Aleta a Abrir (Ángulo Libre):</label>
+            <select style={{ ...inputMiniStyle, fontSize: '10px' }} value={ladoAbrir} onChange={e => setLadoAbrir(e.target.value)}>
+              <option value="ninguno">Ninguno (Todo Recto)</option>
+              <option value="izquierdo">Abrir Aleta Izquierda</option>
+              <option value="derecho">Abrir Aleta Derecha</option>
+            </select>
+          </div>
+
           <div style={{ maxHeight: '100px', overflowY: 'auto', marginBottom: '6px' }}>
             {pliegues.map((p, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: '3px', marginBottom: '4px', alignItems: 'center', background: '#fff', padding: '3px' }}>
-                <span style={{ fontSize: '9px', fontWeight: 'bold' }}>P{idx+1}</span>
-                <input type="text" style={{ ...inputMiniStyle, width: '45px' }} value={p.longitud} onChange={e => modificarPliegue(idx, 'longitud', e.target.value)} />
-                <input type="text" style={{ ...inputMiniStyle, width: '35px' }} value={p.angulo} onChange={e => modificarPliegue(idx, 'angulo', e.target.value)} />
-                <input type="text" style={{ ...inputMiniStyle, flex: 1 }} value={p.detalle} onChange={e => modificarPliegue(idx, 'detalle', e.target.value)} />
-                <button onClick={() => eliminarPliegue(idx)} style={{ border: 'none', background: 'transparent', color: 'red' }}>✕</button>
+              <div key={idx} style={{ display: 'flex', gap: '2px', marginBottom: '4px', alignItems: 'center', background: '#fff', padding: '2px' }}>
+                <span style={{ fontSize: '8px', fontWeight: 'bold', minWidth: '15px' }}>P{idx+1}</span>
+                <input type="text" style={{ ...inputMiniStyle, width: '35px', fontSize: '9px' }} value={p.longitud} onChange={e => modificarPliegue(idx, 'longitud', e.target.value)} />
+                <input type="text" style={{ ...inputMiniStyle, width: '25px', fontSize: '9px' }} value={p.angulo} onChange={e => modificarPliegue(idx, 'angulo', e.target.value)} />
+                <input type="text" style={{ ...inputMiniStyle, flex: 1, fontSize: '9px' }} value={p.detalle} onChange={e => modificarPliegue(idx, 'detalle', e.target.value)} />
+                <button onClick={() => eliminarPliegue(idx)} style={{ border: 'none', background: 'transparent', color: 'red', fontSize: '10px', padding: '0 2px' }}>✕</button>
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <input type="number" style={inputMiniStyle} value={nuevoLongitud} placeholder="Long" onChange={e => setNuevoLongitud(e.target.value)} />
-            <input type="number" style={inputMiniStyle} value={nuevoAngulo} placeholder="Ang" onChange={e => setNuevoAngulo(e.target.value)} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', gap: '2px' }}>
+              <input type="number" style={{ ...inputMiniStyle, flex: 1 }} value={nuevoLongitud} placeholder="L (mm)" onChange={e => setNuevoLongitud(e.target.value)} />
+              <input type="number" style={{ ...inputMiniStyle, flex: 1 }} value={nuevoAngulo} placeholder="Ang (°)" onChange={e => setNuevoAngulo(e.target.value)} />
+            </div>
             <button onClick={agregarPliegue} style={{ ...btnStyle, backgroundColor: '#f39c12', color: '#fff', border: 'none' }}>➕ Añadir</button>
           </div>
         </div>
       </div>
 
-      {/* 📄 PLANO DE TRABAJO EN HOJA CARTA HORIZONTAL GRANDE */}
-      <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <div className="carta-contenedor" style={{ width: '816px', background: '#fff', padding: '15px', boxSizing: 'border-box' }}>
+      {/* ============================================================== */}
+      {/* 📄 PANEL DERECHO: PLANO DE TRABAJO                             */}
+      {/* ============================================================== */}
+      <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+        <div className="carta-contenedor" style={{ width: '100%', maxWidth: '1000px', background: '#fff', padding: '8px 12px', boxSizing: 'border-box', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2.5px solid #f39c12', paddingBottom: '6px', marginBottom: '10px' }}>
-            <img src={logoCortiza} alt="Cortiza" style={{ width: '100px', objectFit: 'contain' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f39c12', paddingBottom: '2px', marginBottom: '2px' }}>
+            <img src={logoCortiza} alt="Cortiza" style={{ width: '80px', objectFit: 'contain' }} />
             <div style={{ textAlign: 'right' }}>
-              <h1 style={{ margin: 0, fontSize: '16px', color: '#f39c12', fontWeight: 'bold' }}>{tituloHoja}</h1>
+              <h1 style={{ margin: 0, fontSize: '14px', color: '#f39c12', fontWeight: 'bold' }}>{tituloHoja}</h1>
               <span style={{ fontSize: '10px', color: '#7f8c8d' }}>(Calibre {calibreCanal})</span>
             </div>
           </div>
 
-          <div style={{ color: 'red', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>{nombreEje}</div>
+          <div style={{ color: 'red', fontWeight: 'bold', fontSize: '12px', marginBottom: '2px' }}>{nombreEje}</div>
 
-          <div style={{ width: '100%', height: '230px', border: '1px solid #cbd5e1', backgroundColor: '#fcfcfc', borderRadius: '4px', position: 'relative' }}>
-            <svg width="100%" height="100%" viewBox="0 0 816 230">
+          {/* VISTA 1: DIBUJO GEOMÉTRICO (AHORA CON ANCHO 1000 PARA EXPANDIRSE) */}
+          <div style={{ width: '100%', height: '150px', border: '1px solid #cbd5e1', backgroundColor: '#fcfcfc', borderRadius: '4px', position: 'relative' }}>
+            <svg width="100%" height="100%" viewBox="0 0 1000 150">
               {columnasCalculadas.map((col) => (
                 <g key={col.id} onContextMenu={(e) => abrirMenuColumna(e, col.id)} style={{ cursor: 'context-menu' }}>
-                  <rect x={col.x - 20} y={10} width="40" height="200" fill="transparent" />
+                  <rect x={col.x - 20} y={10} width="40" height="140" fill="transparent" />
                   <text x={col.x} y={20} fontSize="12" fontWeight="bold" textAnchor="middle">{col.numero}</text>
-                  <line x1={col.x} y1={45} x2={col.x} y2={210} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,4" />
+                  <line x1={col.x} y1={45} x2={col.x} y2={140} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,4" />
                 </g>
               ))}
 
@@ -527,7 +691,7 @@ const DisenadorCanales = () => {
                     ))}
                     {geom.ejesTraslapos.map((eje, tIdx) => (
                       <g key={`eje-t-${tIdx}`}>
-                        <line x1={eje.x} y1={40} x2={eje.x} y2={210} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" />
+                        <line x1={eje.x} y1={40} x2={eje.x} y2={140} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" />
                         <rect x={eje.x - 10} y={eje.clickY - 10} width="20" height="20" fill="transparent" style={{ cursor: 'context-menu' }} onContextMenu={(e) => abrirMenuTraslapo(e, colId, eje.index)} />
                         <text x={eje.x} y={eje.clickY + 4} fontSize="11" fill="blue" fontWeight="bold" textAnchor="middle" style={{ pointerEvents: 'none' }}>X</text>
                       </g>
@@ -535,6 +699,7 @@ const DisenadorCanales = () => {
                   </g>
                 );
               })}
+
               {Object.keys(datosGeometria).map((colId) => <g key={`sosco-${colId}`}>{datosGeometria[colId].soscosSVG}</g>)}
               {Object.keys(datosGeometria).map((colId) => (
                 <g key={`cota-planta-${colId}`}>
@@ -549,44 +714,44 @@ const DisenadorCanales = () => {
             </svg>
           </div>
 
-          <CorteLateralCanal 
-            plieguesGlobales={pliegues}
-            matrizPliegues={matrizPliegues}
-            columnasMapeadas={columnasCalculadas}
-            configColumnas={configColumnas}
-          />
+          {/* VISTA 2 y 3: COMPONENTE DE CORTE LATERAL (Pase de nuevas props) */}
+          <div style={{ marginTop: '2px' }}>
+            <CorteLateralCanal 
+              plieguesGlobales={pliegues}
+              matrizPliegues={matrizPliegues}
+              columnasMapeadas={columnasCalculadas}
+              configColumnas={configColumnas}
+              colorInterior={colorInterior}
+              anchoAbertura={anchoAbertura}
+              ladoAbrir={ladoAbrir}
+              ladoCubierta={ladoCubierta}
+            />
+          </div>
         </div>
       </div>
 
-      {/* --- MENU CONTEXTUAL --- */}
+      {/* ============================================================== */}
+      {/* 🧩 MODALES Y COMPONENTES FLOTANTES                             */}
+      {/* ============================================================== */}
+      
       {menuFlotante.visible && colActual && (
         <div style={{ ...menuContextStyle, top: menuFlotante.y, left: menuFlotante.x }} onClick={e => e.stopPropagation()}>
-          
           {!menuFlotante.esTraslapo ? (
             <React.Fragment>
               <div style={menuHeaderStyle}>Viga {columnasCalculadas.find(c => c.id === menuFlotante.columnaId)?.numero}</div>
-              <button onClick={() => agregarNuevoTraslapoCadena(menuFlotante.columnaId)} style={{ ...btnStyle, width: '100%', marginBottom: '8px', backgroundColor: '#e2e8f0', fontWeight: 'bold' }}>
-                ➕ Activar Traslapo a la Der.
-              </button>
+              <button onClick={() => agregarNuevoTraslapoCadena(menuFlotante.columnaId)} style={{ ...btnStyle, width: '100%', marginBottom: '8px', backgroundColor: '#e2e8f0', fontWeight: 'bold' }}>➕ Activar Traslapo a la Der.</button>
               
               {colActual.listaTraslapos?.length > 0 && (
-                <button onClick={() => { if(window.confirm("¿Seguro de remover el último traslapo?")) eliminarUltimoTraslapo(menuFlotante.columnaId); }} style={{ ...btnStyle, width: '100%', marginBottom: '8px', backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: 'bold', border: '1px solid #fca5a5' }}>
-                  ❌ Eliminar Último Traslapo
-                </button>
+                <button onClick={() => { if(window.confirm("¿Seguro de remover el último traslapo?")) eliminarUltimoTraslapo(menuFlotante.columnaId); }} style={{ ...btnStyle, width: '100%', marginBottom: '8px', backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: 'bold', border: '1px solid #fca5a5' }}>❌ Eliminar Último Traslapo</button>
               )}
 
               {colActual.listaTraslapos?.length === 0 && (
                 <React.Fragment>
-                  <label style={itemMenuLabelStyle}>
-                    <input type="checkbox" checked={colActual.unirDerecha} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'unirDerecha', e.target.checked)} /> 
-                    Unir con Col. Derecha
-                  </label>
+                  <label style={itemMenuLabelStyle}><input type="checkbox" checked={colActual.unirDerecha} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'unirDerecha', e.target.checked)} /> Unir con Col. Derecha</label>
                   {colActual.unirDerecha && (
                     <div style={subSeccionStyle}>
-                      <label style={labelMiniStyle}>Long. Tramo (mm):</label>
-                      <input type="text" style={inputMiniStyle} value={colActual.longitudDerecha} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'longitudDerecha', e.target.value)} />
-                      <label style={labelMiniStyle}>Pendiente (°):</label>
-                      <input type="text" style={inputMiniStyle} value={colActual.pendiente} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'pendiente', e.target.value)} />
+                      <label style={labelMiniStyle}>Long. Tramo (mm):</label><input type="text" style={inputMiniStyle} value={colActual.longitudDerecha} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'longitudDerecha', e.target.value)} />
+                      <label style={labelMiniStyle}>Pendiente (°):</label><input type="text" style={inputMiniStyle} value={colActual.pendiente} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'pendiente', e.target.value)} />
                     </div>
                   )}
                 </React.Fragment>
@@ -595,18 +760,9 @@ const DisenadorCanales = () => {
               <div style={seccionSeparadorStyle}>
                 <span style={seccionTituloMiniStyle}>ZONAS PLANAS (mm)</span>
                 <div style={{ display: 'flex', gap: '3px' }}>
-                  <div>
-                    <label style={labelMiniStyle}>Izq:</label>
-                    <input type="text" style={inputMiniStyle} value={colActual.planaIzquierda || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaIzquierda', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={labelMiniStyle}>Cent:</label>
-                    <input type="text" style={inputMiniStyle} value={colActual.planaCentro || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaCentro', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={labelMiniStyle}>Der:</label>
-                    <input type="text" style={inputMiniStyle} value={colActual.planaDerecha || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaDerecha', e.target.value)} />
-                  </div>
+                  <div><label style={labelMiniStyle}>Izq:</label><input type="text" style={inputMiniStyle} value={colActual.planaIzquierda || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaIzquierda', e.target.value)} /></div>
+                  <div><label style={labelMiniStyle}>Cent:</label><input type="text" style={inputMiniStyle} value={colActual.planaCentro || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaCentro', e.target.value)} /></div>
+                  <div><label style={labelMiniStyle}>Der:</label><input type="text" style={inputMiniStyle} value={colActual.planaDerecha || ''} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'planaDerecha', e.target.value)} /></div>
                 </div>
               </div>
 
@@ -615,9 +771,7 @@ const DisenadorCanales = () => {
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '6px' }}>
                   <label style={labelMiniStyle}>Ø Cota:</label>
                   <select style={{ fontSize: '10px', padding: '1px' }} value={colActual.diametroSosco || '4"'} onChange={(e) => actualizarPropiedadColumna(menuFlotante.columnaId, 'diametroSosco', e.target.value)}>
-                    <option value='3"'>3"</option>
-                    <option value='4"'>4"</option>
-                    <option value='6"'>6"</option>
+                    <option value='3"'>3"</option><option value='4"'>4"</option><option value='6"'>6"</option>
                   </select>
                 </div>
                 <label style={itemMenuLabelStyle}><input type="radio" name="soscoGroup" checked={!!colActual.soscoCentro} onChange={() => setSoscoType('c')} /> Sosco Central</label>
@@ -632,25 +786,19 @@ const DisenadorCanales = () => {
               <div style={menuHeaderStyle}>Traslapo (X)</div>
               <button onClick={() => eliminarTraslapoEspecifico(menuFlotante.columnaId, menuFlotante.traslapoIndex)} style={{ ...btnStyle, width: '100%', backgroundColor: '#ef4444', color: '#fff' }}>🗑️ Eliminar Traslapo</button>
               <div style={{ marginTop: '6px' }}>
-                <label style={labelMiniStyle}>Longitud (mm):</label>
-                <input type="text" style={inputMiniStyle} value={traslapoActual?.longitud || ''} onChange={e => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'longitud', e.target.value)} />
-                <label style={labelMiniStyle}>Pendiente (°):</label>
-                <input type="text" style={inputMiniStyle} value={traslapoActual?.pendiente || ''} onChange={e => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'pendiente', e.target.value)} />
+                <label style={labelMiniStyle}>Longitud (mm):</label><input type="text" style={inputMiniStyle} value={traslapoActual?.longitud || ''} onChange={e => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'longitud', e.target.value)} />
+                <label style={labelMiniStyle}>Pendiente (°):</label><input type="text" style={inputMiniStyle} value={traslapoActual?.pendiente || ''} onChange={e => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'pendiente', e.target.value)} />
               </div>
               <div style={seccionSeparadorStyle}>
                 <span style={seccionTituloMiniStyle}>DESTINO DE SALIDA</span>
                 <label style={itemMenuLabelStyle}><input type="radio" name="destinoGroup" checked={traslapoActual?.conectarA === 'traslapo'} onChange={() => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'conectarA', 'traslapo')} /> Encadenar otro Traslapo</label>
                 <label style={itemMenuLabelStyle}><input type="radio" name="destinoGroup" checked={traslapoActual?.conectarA === 'columna'} onChange={() => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'conectarA', 'columna')} /> Cerrar Tramo a Col. Derecha</label>
               </div>
-              {traslapoActual?.conectarA === 'traslapo' && (
-                <button onClick={() => agregarNuevoTraslapoCadena(menuFlotante.columnaId)} style={{ ...btnStyle, width: '100%', marginTop: '6px', backgroundColor: '#e2e8f0', fontSize: '10px' }}>➕ Insertar Siguiente X</button>
-              )}
+              {traslapoActual?.conectarA === 'traslapo' && <button onClick={() => agregarNuevoTraslapoCadena(menuFlotante.columnaId)} style={{ ...btnStyle, width: '100%', marginTop: '6px', backgroundColor: '#e2e8f0', fontSize: '10px' }}>➕ Insertar Siguiente X</button>}
               {traslapoActual?.conectarA === 'columna' && (
                 <div style={subSeccionStyle}>
-                  <label style={labelMiniStyle}>Long. Cierre (mm):</label>
-                  <input type="text" style={inputMiniStyle} value={traslapoActual?.longitudCierre || ''} onChange={(e) => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'longitudCierre', e.target.value)} />
-                  <label style={labelMiniStyle}>Pendiente Final (°):</label>
-                  <input type="text" style={inputMiniStyle} value={traslapoActual?.pendienteCierre || ''} onChange={(e) => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'pendienteCierre', e.target.value)} />
+                  <label style={labelMiniStyle}>Long. Cierre (mm):</label><input type="text" style={inputMiniStyle} value={traslapoActual?.longitudCierre || ''} onChange={(e) => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'longitudCierre', e.target.value)} />
+                  <label style={labelMiniStyle}>Pendiente Final (°):</label><input type="text" style={inputMiniStyle} value={traslapoActual?.pendienteCierre || ''} onChange={(e) => actualizarPropiedadTraslapo(menuFlotante.columnaId, menuFlotante.traslapoIndex, 'pendienteCierre', e.target.value)} />
                 </div>
               )}
             </React.Fragment>
@@ -659,7 +807,6 @@ const DisenadorCanales = () => {
         </div>
       )}
 
-      {/* --- MODAL CARGA --- */}
       {modalAbierto && (
         <div style={modalOverlayStyle}>
           <div style={modalBodyStyle}>
@@ -669,15 +816,12 @@ const DisenadorCanales = () => {
             </div>
             <div style={{ maxHeight: '200px', overflowY: 'auto', marginTop: '10px' }}>
               {listaProyectos.map(p => (
-                <div key={p.id} style={proyectoItemStyle} onClick={() => cargarProyectoEspecifico(p)}>
-                  <span style={{ fontWeight: 'bold', color: '#2563eb' }}>{p.nombre_proyecto}</span>
-                </div>
+                <div key={p.id} style={proyectoItemStyle} onClick={() => cargarProyectoEspecifico(p)}><span style={{ fontWeight: 'bold', color: '#2563eb' }}>{p.nombre_proyecto}</span></div>
               ))}
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };
@@ -699,4 +843,4 @@ const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100vw', 
 const modalBodyStyle = { backgroundColor: '#fff', padding: '15px', borderRadius: '6px', width: '350px' };
 const proyectoItemStyle = { padding: '6px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' };
 
-export default DisenadorCanales;
+export default DisenadorCanales;<cd styleName={}></cd>
