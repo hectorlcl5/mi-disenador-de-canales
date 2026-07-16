@@ -843,4 +843,4 @@ const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100vw', 
 const modalBodyStyle = { backgroundColor: '#fff', padding: '15px', borderRadius: '6px', width: '350px' };
 const proyectoItemStyle = { padding: '6px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' };
 
-export default DisenadorCanales;<cd styleName={}></cd>
+export default DisenadorCanales;
