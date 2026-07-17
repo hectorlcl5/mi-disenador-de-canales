@@ -112,9 +112,14 @@ const DisenadorRemates = () => {
       <style>{`
         @media print { 
           .no-print { display: none !important; } 
-          .print-area { width: 100% !important; padding: 0 !important; } 
-          .main-container { background: white !important; } 
-          .print-header { display: flex !important; } 
+          body, html, .main-container { background: white !important; height: auto !important; overflow: visible !important; display: block !important; }
+          .print-area { width: 100% !important; padding: 0 !important; display: flex !important; flex-direction: column !important; min-height: 100vh !important; } 
+          .print-header { display: flex !important; margin-bottom: 10px !important; padding-bottom: 10px !important; } 
+          /* Magia para distribuir los remates equitativamente: */
+          .remates-wrapper { flex: 1 !important; display: flex !important; flex-direction: column !important; justify-content: space-evenly !important; }
+          .remate-item { border-bottom: 1px dashed #ccc !important; padding-bottom: 10px !important; margin-bottom: 0 !important; }
+          .remate-item:last-child { border-bottom: none !important; }
+          @page { size: letter portrait; margin: 0.5cm; }
         }
       `}</style>
       
@@ -131,7 +136,7 @@ const DisenadorRemates = () => {
             <button onClick={nuevoProyecto} style={btnStyle}>Nuevo</button>
             <button onClick={listarProyectos} style={btnStyle}>Abrir</button>
             <button onClick={guardarProyecto} style={{ ...btnStyle, backgroundColor: '#28a745', color: '#fff' }}>Guardar</button>
-            <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff' }}>PDF</button>
+            <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff' }}>Imprimir</button>
           </div>
           <label style={{ fontSize: '10px', color: '#666' }}>NOMBRE DEL ARCHIVO:</label>
           <input style={inputStyle} value={nombreArchivo} onChange={e => setNombreArchivo(e.target.value)} />
@@ -141,11 +146,26 @@ const DisenadorRemates = () => {
         <label style={{ fontSize: '10px', fontWeight: 'bold' }}>TÍTULO DE LA HOJA:</label>
         <input style={{ ...inputStyle, marginBottom: '20px', border: '1px solid #f39c12' }} value={tituloHoja} onChange={e => setTituloHoja(e.target.value)} />
 
-        {remates.map((r, rIdx) => (
+       {remates.map((r, rIdx) => (
           <div key={r.id} style={cardStyle}>
-            <input style={{ fontWeight: 'bold', width: '100%', marginBottom: '10px', fontSize: '16px', border: 'none', borderBottom: '1px solid #ddd' }} value={r.titulo} onChange={e => {
-              const n = [...remates]; n[rIdx].titulo = e.target.value; setRemates(n);
-            }} />
+            {/* NUEVO ENCABEZADO CON BOTÓN DE ELIMINAR REMATE */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #ddd', paddingBottom: '4px' }}>
+              <input style={{ fontWeight: 'bold', width: '100%', fontSize: '16px', border: 'none', outline: 'none' }} value={r.titulo} onChange={e => {
+                const n = [...remates]; n[rIdx].titulo = e.target.value; setRemates(n);
+              }} />
+              <button 
+                onClick={() => {
+                  if (window.confirm(`¿Seguro que deseas eliminar el "${r.titulo}" por completo?`)) {
+                    const n = remates.filter((_, i) => i !== rIdx);
+                    setRemates(n);
+                  }
+                }} 
+                style={{ background: 'transparent', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '16px', padding: '0 5px' }} 
+                title="Eliminar Remate Completo"
+              >
+                🗑️
+              </button>
+            </div>
             
             <p style={labelStyle}>INDICACIÓN DE COLOR:</p>
             <select 
@@ -206,22 +226,25 @@ const DisenadorRemates = () => {
           </h1>
         </div>
         
-        {remates.map(r => (
-          <div key={r.id} style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '40px', paddingBottom: '30px', alignItems: 'center', pageBreakInside: 'avoid' }}>
-            <div style={{ flex: 1 }}>
-              <DibujoSVG tramos={r.tramos} caraColor={r.caraColor} caracteristicas={r.caracteristicas} />
+        {/* CONTENEDOR FLEX PARA DISTRIBUIR EQUITATIVAMENTE EN IMPRESIÓN */}
+        <div className="remates-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+          {remates.map(r => (
+            <div key={r.id} className="remate-item" style={{ display: 'flex', borderBottom: '1px solid #ddd', paddingBottom: '15px', alignItems: 'center', pageBreakInside: 'avoid' }}>
+              <div style={{ flex: 1 }}>
+                <DibujoSVG tramos={r.tramos} caraColor={r.caraColor} caracteristicas={r.caracteristicas} />
+              </div>
+              <div style={{ width: '260px', borderLeft: '4px solid #f39c12', paddingLeft: '15px', marginLeft: '15px' }}>
+                <h2 style={{ margin: '0 0 10px 0', fontSize: '17px', color: '#2c3e50' }}>{r.titulo}</h2>
+                {r.caracteristicas.map((c, i) => (
+                  <div key={i} style={{ fontSize: '12px', marginBottom: '4px' }}>
+                    <strong style={{color: '#555'}}>{c.key}:</strong> {c.value}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ width: '300px', borderLeft: '4px solid #f39c12', paddingLeft: '25px', marginLeft: '20px' }}>
-              <h2 style={{ margin: '0 0 15px 0', fontSize: '20px', color: '#2c3e50' }}>{r.titulo}</h2>
-              {r.caracteristicas.map((c, i) => (
-                <div key={i} style={{ fontSize: '14px', marginBottom: '6px' }}>
-                  <strong style={{color: '#555'}}>{c.key}:</strong> {c.value}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </div> {/* <-- ¡ESTA ETIQUETA ERA LA QUE FALTABA EN TU CÓDIGO! */}
 
       {/* MODAL OPEN */}
       {showModal && (
@@ -315,7 +338,7 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
   }
 
   return (
-    <svg width="100%" height="240" viewBox="0 0 500 240" style={{ backgroundColor: '#fafafa', borderRadius: '6px' }}>
+    <svg width="100%" height="150" viewBox="0 0 500 240" style={{ backgroundColor: '#fafafa', borderRadius: '6px', maxHeight: '150px' }}>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8c8d" />
