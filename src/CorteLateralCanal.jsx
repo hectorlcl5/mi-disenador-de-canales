@@ -8,14 +8,13 @@ const CorteLateralCanal = ({
   colorInterior = "Blanco",
   anchoAbertura = "",
   ladoAbrir = "ninguno",
-  ladoCubierta = "ninguno" // RECIBIMOS EL NUEVO SELECTOR
+  ladoCubierta = "ninguno"
 }) => {
 
-  // ==========================================
-  // SECCIÓN 1: MOTOR DE LA TABLA LONGITUDINAL (VISTA 2)
-  // ==========================================
   const generarHitosLongitudinalesCompletos = () => {
     const hitos = [];
+    const anchoVisualPartePlana = 25;
+    
     columnasMapeadas.forEach((col, cIdx) => {
       hitos.push({ tipo: 'viga', label: `Viga ${col.numero}`, keyHash: `viga-${col.id}`, x: col.x });
 
@@ -25,9 +24,34 @@ const CorteLateralCanal = ({
         const sigCol = columnasMapeadas[cIdx + 1];
 
         if (listaT.length > 0) {
-          const pasoX = (sigCol.x - col.x) / (listaT.length + 1);
-          listaT.forEach((_, tIdx) => {
-            hitos.push({ tipo: 'traslapo', label: `V${col.numero}-T${tIdx + 1}`, keyHash: `traslapo-${col.id}-${tIdx}`, x: col.x + (pasoX * (tIdx + 1)) });
+          // 💡 MISMA FÓRMULA PROPORCIONAL DE LA VISTA 1 PARA ALINEACIÓN EXACTA DE X
+          const tienePlanaDerecha = parseFloat(config.planaDerecha) > 0 || parseFloat(config.planaCentro) > 0;
+          const inicioX_V1 = col.x + (tienePlanaDerecha ? anchoVisualPartePlana : 0);
+
+          const configSig = configColumnas[sigCol.id] || {};
+          const tienePlanaIzquierdaSig = parseFloat(configSig.planaIzquierda) > 0 || parseFloat(configSig.planaCentro) > 0;
+          const finX_V1 = sigCol.x - (tienePlanaIzquierdaSig ? anchoVisualPartePlana : 0);
+
+          const anchoMaxDisponibleX = finX_V1 - inicioX_V1;
+          const totalSegmentos = listaT.length + (listaT[listaT.length - 1].conectarA === 'columna' ? 1 : 0);
+          const numColumnas = columnasMapeadas.length;
+          const pixelMinimoGarantizado = Math.max(14, 22 - (numColumnas * 0.3));
+          const pixelesFijosReservados = totalSegmentos * pixelMinimoGarantizado;
+          const pixelesRemanentesProporcionales = Math.max(0, anchoMaxDisponibleX - pixelesFijosReservados);
+
+          let sumatoriaMilimetrosTotal = 0;
+          listaT.forEach(t => sumatoriaMilimetrosTotal += (parseFloat(t.longitud) || 0));
+          const ultimoT = listaT[listaT.length - 1];
+          if (ultimoT.conectarA === 'columna') sumatoriaMilimetrosTotal += (parseFloat(ultimoT.longitudCierre) || 0);
+
+          let xCursor = inicioX_V1;
+          listaT.forEach((traslapo, tIdx) => {
+            const mmTramoActual = parseFloat(traslapo.longitud) || 0;
+            const parteProporcional = sumatoriaMilimetrosTotal > 0 ? (mmTramoActual / sumatoriaMilimetrosTotal) * pixelesRemanentesProporcionales : 0;
+            const xSiguiente = xCursor + pixelMinimoGarantizado + parteProporcional;
+            
+            hitos.push({ tipo: 'traslapo', label: `V${col.numero}-T${tIdx + 1}`, keyHash: `traslapo-${col.id}-${tIdx}`, x: xSiguiente });
+            xCursor = xSiguiente;
           });
         }
       }
@@ -50,7 +74,7 @@ const CorteLateralCanal = ({
     });
 
     const sumaAlturasReales = altosPorPliegue.reduce((a, b) => a + b, 0) || 1;
-    const altoGraficoDisponible = 135; 
+    const altoGraficoDisponible = Math.max(80, plieguesGlobales.length * 20); 
     return altosPorPliegue.map(alt => (alt / sumaAlturasReales) * altoGraficoDisponible);
   };
 
@@ -91,15 +115,16 @@ const CorteLateralCanal = ({
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
 
-    const margenY = 90;
-    const minYConMargen = minY - margenY;
-    const maxYConMargen = maxY + margenY;
+    const margenYArriba = 90;
+    const margenYAbajo = 150; 
+    const minYConMargen = minY - margenYArriba;
+    const maxYConMargen = maxY + margenYAbajo;
 
     const anchoFigura = maxX - minX;
     const altoFigura = maxYConMargen - minYConMargen;
 
     const offsetX = (550 - anchoFigura) / 2 - minX; 
-    const offsetY = (200 - altoFigura) / 2 - minYConMargen;
+    const offsetY = (350 - altoFigura) / 2 - minYConMargen;
 
     let pathData = `M ${pts[0].x + offsetX} ${pts[0].y + offsetY}`;
     const etiquetas = [];
@@ -121,10 +146,23 @@ const CorteLateralCanal = ({
       });
     });
 
+    let fondoIdx = 0;
+    let maxMidY = -Infinity;
+    lineas.forEach((l, i) => {
+      const midY = (l.y1 + l.y2) / 2;
+      if (midY > maxMidY) {
+        maxMidY = midY;
+        fondoIdx = i;
+      }
+    });
+
     let flechasColor = null;
-    if (lineas.length >= 3) {
-      const midIdx = Math.floor(lineas.length / 2);
-      const lBase = lineas[midIdx];
+    let cotaAberturaSvg = null;
+    let cotaAbrirAletaSvg = null;
+    let angulo90Svg = null;
+
+    if (lineas.length > 0) {
+      const lBase = lineas[fondoIdx];
 
       const tX_int = lBase.x1 + (lBase.x2 - lBase.x1) * 0.35 + offsetX;
       const tY_int = lBase.y1 + (lBase.y2 - lBase.y1) * 0.35 + offsetY;
@@ -141,10 +179,10 @@ const CorteLateralCanal = ({
       const intEndX = tX_int - nx * 10;
       const intEndY = tY_int - ny * 10;
 
-      const extStrX = tX_ext + nx * 45 + 15; 
-      const extStrY = tY_ext + ny * 45 + 15;
-      const extEndX = tX_ext + nx * 5;
-      const extEndY = tY_ext + ny * 5;
+      const extStrX = tX_ext + 45; 
+      const extStrY = tY_ext + 35;
+      const extEndX = tX_ext + 8;
+      const extEndY = tY_ext + 8;
 
       const textoInterior = colorInterior === 'Blanco' ? 'Blanco' : 'Gris';
       const textoExterior = colorInterior === 'Blanco' ? 'Gris' : 'Blanco';
@@ -152,65 +190,63 @@ const CorteLateralCanal = ({
       flechasColor = (
         <g>
           <line x1={intStrX} y1={intStrY} x2={intEndX} y2={intEndY} stroke="#7f8c8d" strokeWidth="1.5" markerEnd="url(#arrowhead)" />
-          <text x={intStrX - nx*15} y={intStrY - ny*15 + 4} fontSize="11" fill="#475569" fontWeight="bold" textAnchor="middle">{textoInterior}</text>
+          <text x={intStrX - nx*15} y={intStrY - ny*15 + 4} fontSize="13" fill="#475569" fontWeight="bold" textAnchor="middle">{textoInterior}</text>
 
           <line x1={extStrX} y1={extStrY} x2={extEndX} y2={extEndY} stroke="#7f8c8d" strokeWidth="1.5" markerEnd="url(#arrowhead)" />
-          <text x={extStrX + nx*15} y={extStrY + ny*15 + 4} fontSize="11" fill="#475569" fontWeight="bold" textAnchor="middle">{textoExterior}</text>
+          <text x={extStrX + 10} y={extStrY + 12} fontSize="13" fill="#475569" fontWeight="bold" textAnchor="start">{textoExterior}</text>
         </g>
       );
-    }
 
-    let cotaAberturaSvg = null;
-    if (anchoAbertura && lineas.length >= 5) {
-      const p1 = { x: pts[1].x + offsetX, y: pts[1].y + offsetY };
-      const p4 = { x: pts[4].x + offsetX, y: pts[4].y + offsetY };
-      const midX = (p1.x + p4.x) / 2;
-      const topY = Math.min(p1.y, p4.y) + 20; 
+      if (anchoAbertura && pts.length >= 2) {
+        const pIzqTop = { x: pts[0].x + offsetX, y: pts[0].y + offsetY };
+        const pDerTop = { x: pts[pts.length - 1].x + offsetX, y: pts[pts.length - 1].y + offsetY };
 
-      cotaAberturaSvg = (
-        <g>
-          <text x={midX} y={topY + 4} fontSize="12" fill="#2563eb" fontWeight="bold" textAnchor="middle">{anchoAbertura}</text>
-          <line x1={midX - 25} y1={topY} x2={p1.x + 10} y2={topY} stroke="#2563eb" strokeWidth="1.2" markerEnd="url(#arrowheadBlue)" />
-          <line x1={midX + 25} y1={topY} x2={p4.x - 10} y2={topY} stroke="#2563eb" strokeWidth="1.2" markerEnd="url(#arrowheadBlue)" />
-        </g>
-      );
-    }
+        const pMasBajo = pIzqTop.y > pDerTop.y ? pIzqTop : pDerTop;
+        const cotaY = pMasBajo.y - 15; 
+        const midX = (pIzqTop.x + pDerTop.x) / 2;
 
-    let cotaAbrirAletaSvg = null;
-    let angulo90Svg = null;
-    
-    if (ladoAbrir !== 'ninguno' && lineas.length >= 5) {
-      const pIzq = { x: pts[2].x + offsetX, y: pts[2].y + offsetY }; 
-      const pDer = { x: pts[3].x + offsetX, y: pts[3].y + offsetY }; 
-      
-      if (ladoAbrir === 'derecho') {
-        cotaAbrirAletaSvg = (
+        cotaAberturaSvg = (
           <g>
-            <line x1={pDer.x - 20} y1={pDer.y - 70} x2={pDer.x - 5} y2={pDer.y - 10} stroke="#475569" strokeWidth="1.2" markerEnd="url(#arrowhead)" />
-            <text x={pDer.x - 20} y={pDer.y - 85} fontSize="10" fill="#475569" textAnchor="middle">Abrir solo</text>
-            <text x={pDer.x - 20} y={pDer.y - 73} fontSize="10" fill="#475569" textAnchor="middle">este lado</text>
+            <text x={midX} y={cotaY - 4} fontSize="15" fill="#2563eb" fontWeight="bold" textAnchor="middle">{anchoAbertura}</text>
+            <line x1={midX - 25} y1={cotaY} x2={pIzqTop.x + 5} y2={cotaY} stroke="#2563eb" strokeWidth="1.2" markerEnd="url(#arrowheadBlue)" />
+            <line x1={midX + 25} y1={cotaY} x2={pDerTop.x - 5} y2={cotaY} stroke="#2563eb" strokeWidth="1.2" markerEnd="url(#arrowheadBlue)" />
           </g>
         );
-        angulo90Svg = (
-          <g>
-            <path d={`M ${pIzq.x} ${pIzq.y - 14} L ${pIzq.x + 14} ${pIzq.y - 14} L ${pIzq.x + 14} ${pIzq.y}`} fill="none" stroke="#2563eb" strokeWidth="1.5" />
-            <text x={pIzq.x + 22} y={pIzq.y - 16} fontSize="10" fill="#2563eb" fontWeight="bold">90°</text>
-          </g>
-        );
-      } else if (ladoAbrir === 'izquierdo') {
-        cotaAbrirAletaSvg = (
-          <g>
-            <line x1={pIzq.x + 20} y1={pIzq.y - 70} x2={pIzq.x + 5} y2={pIzq.y - 10} stroke="#475569" strokeWidth="1.2" markerEnd="url(#arrowhead)" />
-            <text x={pIzq.x + 20} y={pIzq.y - 85} fontSize="10" fill="#475569" textAnchor="middle">Abrir solo</text>
-            <text x={pIzq.x + 20} y={pIzq.y - 73} fontSize="10" fill="#475569" textAnchor="middle">este lado</text>
-          </g>
-        );
-        angulo90Svg = (
-          <g>
-            <path d={`M ${pDer.x} ${pDer.y - 14} L ${pDer.x - 14} ${pDer.y - 14} L ${pDer.x - 14} ${pDer.y}`} fill="none" stroke="#2563eb" strokeWidth="1.5" />
-            <text x={pDer.x - 22} y={pDer.y - 16} fontSize="10" fill="#2563eb" fontWeight="bold">90°</text>
-          </g>
-        );
+      }
+
+      if (ladoAbrir !== 'ninguno' && lineas.length >= 3) {
+        const pIzqFondo = { x: pts[fondoIdx].x + offsetX, y: pts[fondoIdx].y + offsetY }; 
+        const pDerFondo = { x: pts[fondoIdx + 1].x + offsetX, y: pts[fondoIdx + 1].y + offsetY }; 
+        
+        if (ladoAbrir === 'derecho') {
+          cotaAbrirAletaSvg = (
+            <g>
+              <line x1={pDerFondo.x - 20} y1={pDerFondo.y - 70} x2={pDerFondo.x - 5} y2={pDerFondo.y - 10} stroke="#475569" strokeWidth="1.2" markerEnd="url(#arrowhead)" />
+              <text x={pDerFondo.x - 20} y={pDerFondo.y - 85} fontSize="14" fill="#475569" textAnchor="middle">Abrir solo</text>
+              <text x={pDerFondo.x - 20} y={pDerFondo.y - 73} fontSize="14" fill="#475569" textAnchor="middle">este lado</text>
+            </g>
+          );
+          angulo90Svg = (
+            <g>
+              <path d={`M ${pIzqFondo.x} ${pIzqFondo.y - 14} L ${pIzqFondo.x + 14} ${pIzqFondo.y - 14} L ${pIzqFondo.x + 14} ${pIzqFondo.y}`} fill="none" stroke="#2563eb" strokeWidth="1.5" />
+              <text x={pIzqFondo.x + 22} y={pIzqFondo.y - 16} fontSize="14" fill="#2563eb" fontWeight="bold">90°</text>
+            </g>
+          );
+        } else if (ladoAbrir === 'izquierdo') {
+          cotaAbrirAletaSvg = (
+            <g>
+              <line x1={pIzqFondo.x + 20} y1={pIzqFondo.y - 70} x2={pIzqFondo.x + 5} y2={pIzqFondo.y - 10} stroke="#475569" strokeWidth="1.2" markerEnd="url(#arrowhead)" />
+              <text x={pIzqFondo.x + 20} y={pIzqFondo.y - 85} fontSize="14" fill="#475569" textAnchor="middle">Abrir solo</text>
+              <text x={pIzqFondo.x + 20} y={pIzqFondo.y - 73} fontSize="14" fill="#475569" textAnchor="middle">este lado</text>
+            </g>
+          );
+          angulo90Svg = (
+            <g>
+              <path d={`M ${pDerFondo.x} ${pDerFondo.y - 14} L ${pDerFondo.x - 14} ${pDerFondo.y - 14} L ${pDerFondo.x - 14} ${pDerFondo.y}`} fill="none" stroke="#2563eb" strokeWidth="1.5" />
+              <text x={pDerFondo.x - 22} y={pDerFondo.y - 16} fontSize="14" fill="#2563eb" fontWeight="bold">90°</text>
+            </g>
+          );
+        }
       }
     }
 
@@ -225,46 +261,40 @@ const CorteLateralCanal = ({
   // RENDERIZADO DEL COMPONENTE
   // ==========================================
   return (
-    <div style={{ marginTop: '25px', borderTop: '2px dashed #cbd5e1', paddingTop: '20px' }}>
+    <div style={{ marginTop: '2px', borderTop: '1px dashed #cbd5e1', paddingTop: '5px' }}>
       
       {/* ----------------------------------------------------- */}
       {/* VISTA 2: TABLA LONGITUDINAL PROPORCIONAL              */}
       {/* ----------------------------------------------------- */}
-      <div style={{ width: '100%', backgroundColor: '#fdfdfd', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', marginBottom: '20px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>
+      <div style={{ width: '100%', backgroundColor: '#fdfdfd', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px', marginBottom: '6px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
           Corte superior ancho paredes canal
         </span>
         
-        {/* VIEWBOX AMPLIADO A 1000px PARA ALINEARSE CON LA VISTA 1 */}
-        <svg width="100%" height="230" viewBox="0 0 1000 230" style={{ background: '#fff' }}>
+        <svg width="100%" height={Math.max(90, altoTotalTabla + 35)} viewBox={`0 0 1000 ${Math.max(90, altoTotalTabla + 35)}`} style={{ background: '#fff', display: 'block' }}>
           
-          {/* DEFINICIÓN PARA LA FLECHA ROJA DE LA TABLA */}
           <defs>
             <marker id="arrowheadRed" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
               <polygon points="0 0, 8 4, 0 8" fill="#ef4444" />
             </marker>
           </defs>
 
-          {/* DIBUJO DE LA FLECHA "LADO CUBIERTA" SI ESTÁ SELECCIONADA */}
           {ladoCubierta !== 'ninguno' && (
             <g>
               {ladoCubierta === 'P1' ? (
-                // Flecha arriba apuntando hacia P1 (Y=28)
                 <>
-                  <text x="500" y="12" fontSize="11" fill="#ef4444" fontWeight="bold" textAnchor="middle">LADO CUBIERTA</text>
-                  <line x1="500" y1="15" x2="500" y2="26" stroke="#ef4444" strokeWidth="1.5" markerEnd="url(#arrowheadRed)" />
+                  <text x="500" y="10" fontSize="11" fill="#ef4444" fontWeight="bold" textAnchor="middle">LADO CUBIERTA</text>
+                  <line x1="500" y1="13" x2="500" y2="24" stroke="#ef4444" strokeWidth="1.5" markerEnd="url(#arrowheadRed)" />
                 </>
               ) : (
-                // Flecha abajo apuntando hacia la Última Pestaña (Y = altoTotalTabla)
                 <>
-                  <line x1="500" y1={altoTotalTabla + 20} x2="500" y2={altoTotalTabla + 2} stroke="#ef4444" strokeWidth="1.5" markerEnd="url(#arrowheadRed)" />
-                  <text x="500" y={altoTotalTabla + 30} fontSize="11" fill="#ef4444" fontWeight="bold" textAnchor="middle">LADO CUBIERTA</text>
+                  <line x1="500" y1={altoTotalTabla + 12} x2="500" y2={altoTotalTabla + 2} stroke="#ef4444" strokeWidth="1.5" markerEnd="url(#arrowheadRed)" />
+                  <text x="500" y={altoTotalTabla + 24} fontSize="11" fill="#ef4444" fontWeight="bold" textAnchor="middle">LADO CUBIERTA</text>
                 </>
               )}
             </g>
           )}
 
-          {/* HITOS VERTICALES */}
           {todosLosHitos.map((hito, idx) => (
             <g key={`eje-long-${idx}`}>
               <line x1={hito.x} y1={25} x2={hito.x} y2={altoTotalTabla + 5} stroke={hito.tipo === 'viga' ? '#64748b' : '#cbd5e1'} strokeWidth={hito.tipo === 'viga' ? '1.2' : '1'} strokeDasharray={hito.tipo === 'viga' ? 'none' : '2,2'} />
@@ -272,7 +302,6 @@ const CorteLateralCanal = ({
             </g>
           ))}
 
-          {/* LÍNEAS HORIZONTALES (EXTENDIDAS HASTA EL ANCHO 985px) */}
           {(() => {
             let yAcumulado = 28;
             return plieguesGlobales.map((pliegueGlobal, fIdx) => {
@@ -294,7 +323,6 @@ const CorteLateralCanal = ({
                       </text>
                     );
                   })}
-                  {/* TEXTO DE IDENTIFICACIÓN DE PESTAÑA A LA DERECHA */}
                   <text x="990" y={yLinea + (altoFilaActual / 2) + 3} fontSize="9" fill="#475569" fontWeight="bold">P{fIdx + 1}</text>
                 </g>
               );
@@ -307,12 +335,13 @@ const CorteLateralCanal = ({
       {/* ----------------------------------------------------- */}
       {/* VISTA 3: PERFIL GEOMÉTRICO                            */}
       {/* ----------------------------------------------------- */}
-      <div style={{ width: '100%', backgroundColor: '#fafafa', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>
+      <div style={{ width: '100%', backgroundColor: '#fafafa', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
           Forma del Perfil de Doblez de la Canal (Plantilla Base)
         </span>
         
-        <svg width="100%" height="170" viewBox="0 0 816 280" preserveAspectRatio="xMidYMid meet" style={{ background: '#fff', border: '1px solid #f1f5f9' }}>
+        {/* VIEWBOX con altura de 350 para proteger márgenes inferiores de textos */}
+        <svg width="100%" height="160px" viewBox="0 0 1000 350" style={{ background: '#fff', border: '1px solid #f1f5f9', display: 'block' }}>
           
           <defs>
             <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
@@ -328,7 +357,7 @@ const CorteLateralCanal = ({
           {etiquetas.map((etq, idx) => {
             if (parseFloat(etq.valor) <= 5) return null;
             return (
-              <text key={`etiqueta-perfil-${idx}`} x={etq.x} y={etq.y + 4} fontSize="12" fill="#e74c3c" fontWeight="bold" textAnchor="middle">
+              <text key={`etiqueta-perfil-${idx}`} x={etq.x} y={etq.y + 4} fontSize="15" fill="#e74c3c" fontWeight="bold" textAnchor="middle">
                 {etq.valor}
               </text>
             );
@@ -339,7 +368,7 @@ const CorteLateralCanal = ({
           {cotaAbrirAletaSvg}
           {angulo90Svg}
 
-          <text x={Math.min(maxXOffset + 100, 700)} y="130" fontSize="26" fill="#475569" fontWeight="bold" textAnchor="start">
+          <text x={Math.min(maxXOffset + 100, 700)} y="150" fontSize="26" fill="#475569" fontWeight="bold" textAnchor="start">
             (Canal en desarrollo {desarrolloExacto} mm)
           </text>
 

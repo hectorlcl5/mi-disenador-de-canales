@@ -15,11 +15,10 @@ const DisenadorCanales = () => {
   const [numColumnas, setNumColumnas] = useState(6);
   const [calibreCanal, setCalibreCanal] = useState("20");
   
-  // ESTADOS DE ANOTACIÓN TÉCNICA
   const [colorInterior, setColorInterior] = useState("Blanco"); 
   const [anchoAbertura, setAnchoAbertura] = useState("530");
   const [ladoAbrir, setLadoAbrir] = useState("ninguno"); 
-  const [ladoCubierta, setLadoCubierta] = useState("ninguno"); // NUEVO ESTADO LADO CUBIERTA
+  const [ladoCubierta, setLadoCubierta] = useState("ninguno");
 
   const [invertirNumeracion, setInvertirNumeracion] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -29,11 +28,11 @@ const DisenadorCanales = () => {
   // 2. ESTADOS DE DOBLECES Y MATRIZ 3D
   // ==========================================
   const [pliegues, setPliegues] = useState([
-    { longitud: 80, angulo: 90, detalle: "Pestaña" },
-    { longitud: 220, angulo: 105, detalle: "Aleta Izq" },
-    { longitud: 350, angulo: 90, detalle: "Fondo" },
-    { longitud: 120, angulo: 75, detalle: "Aleta Der" },
-    { longitud: 40, angulo: 0, detalle: "Pestaña Cubierta" }
+    { longitud: 50, angulo: 0, detalle: "Pestaña" },
+    { longitud: 220, angulo: 90, detalle: "Aleta Izq" },
+    { longitud: 400, angulo: 0, detalle: "Fondo" },
+    { longitud: 220, angulo: 270, detalle: "Aleta Der" },
+    { longitud: 50, angulo: 0, detalle: "Pestaña Cubierta" }
   ]);
   const [nuevoLongitud, setNuevoLongitud] = useState("100");
   const [nuevoAngulo, setNuevoAngulo] = useState("90");
@@ -42,9 +41,6 @@ const DisenadorCanales = () => {
   const [matrizPliegues, setMatrizPliegues] = useState({});
   const [hitoSeleccionado, setHitoSeleccionado] = useState("viga-0");
 
-  // ==========================================
-  // 3. ESTADOS DE INTERFAZ Y MODALES
-  // ==========================================
   const [modalAbierto, setModalAbierto] = useState(false);
   const [listaProyectos, setListaProyectos] = useState([]);
   const [cargandoLista, setCargandoLista] = useState(false);
@@ -58,7 +54,6 @@ const DisenadorCanales = () => {
   // ==========================================
   // 4. EFECTOS (USEEFFECTS)
   // ==========================================
-  
   useEffect(() => {
     if (numColumnasInput !== "") {
       const valor = parseInt(numColumnasInput);
@@ -102,7 +97,6 @@ const DisenadorCanales = () => {
   // ==========================================
   const generarColumnasLineales = () => {
     const cols = [];
-    // AUMENTAMOS EL ANCHO MAXIMO A 1000 PARA APROVECHAR LA HOJA CARTA HORIZONTAL
     const anchoMaxSvn = 1000; 
     const anchoVisualPartePlana = 25;
 
@@ -142,29 +136,72 @@ const DisenadorCanales = () => {
 
   const hitosOrdenados = obtenerHitosOrdenados();
 
+  // ==========================================
+  // 6. FUNCIONES CRUD Y DUPLICACIÓN ESTRUCTURAL
+  // ==========================================
 
-  // ==========================================
-  // 6. FUNCIONES CRUD (DOBLECES Y MATRIZ)
-  // ==========================================
+  // NUEVO DOCUMENTO (REINICIO TOTAL DE VARIABLES)
+  const nuevoDocumento = () => {
+    if(window.confirm("¿Crear un nuevo diseño? Se limpiará toda la pantalla.")) {
+      setProjectId(null); 
+      setConfigColumnas({}); 
+      setNumColumnasInput("6"); 
+      setNumColumnas(6); 
+      setMatrizPliegues({}); 
+      setNombreArchivo("Canales_xxxx");
+      setTituloHoja("DISEÑO PARA FABRICACIÓN DE CANALES CUBIERTA BODEGA");
+      setNombreEje("Canal eje A");
+      setCalibreCanal("20");
+      setColorInterior("Blanco");
+      setAnchoAbertura("530");
+      setLadoAbrir("ninguno");
+      setLadoCubierta("ninguno");
+      setPliegues([
+        { longitud: 50, angulo: 0, detalle: "Pestaña" },
+        { longitud: 220, angulo: 90, detalle: "Aleta Izq" },
+        { longitud: 400, angulo: 0, detalle: "Fondo" },
+        { longitud: 220, angulo: 270, detalle: "Aleta Der" },
+        { longitud: 50, angulo: 0, detalle: "Pestaña Cubierta" }
+      ]);
+      setMensaje("✨ Documento Nuevo Creado"); 
+    }
+  };
+
+  const duplicarEstructuraViga1 = () => {
+    if (!configColumnas[0]) return;
+    if (window.confirm("¿Copiar configuración de Viga 1 a toda la canal?")) {
+      const configBase = configColumnas[0];
+      const nuevaConfig = { ...configColumnas };
+      for (let i = 1; i < numColumnas; i++) {
+        nuevaConfig[i] = {
+          ...configBase,
+          listaTraslapos: configBase.listaTraslapos ? configBase.listaTraslapos.map(t => ({ ...t })) : []
+        };
+      }
+      setConfigColumnas(nuevaConfig);
+      setMensaje("📋 Diseño estructural copiado a todas.");
+    }
+  };
+
   const restaurarPlantillaEstandar = () => {
-    if (window.confirm("¿Seguro que deseas restaurar la canal a las 5 caras estándar? Perderás los ángulos y medidas actuales.")) {
+    if (window.confirm("¿Seguro que deseas restaurar la canal a las 5 caras estándar?")) {
       const plieguesEstandar = [
-        { longitud: 80, angulo: 90, detalle: "Pestaña" },
-        { longitud: 220, angulo: 105, detalle: "Aleta Izq" },
-        { longitud: 350, angulo: 90, detalle: "Fondo" },
-        { longitud: 120, angulo: 75, detalle: "Aleta Der" },
-        { longitud: 40, angulo: 0, detalle: "Pestaña Cubierta" }
+        { longitud: 50, angulo: 0, detalle: "Pestaña" },
+        { longitud: 220, angulo: 90, detalle: "Aleta Izq" },
+        { longitud: 400, angulo: 0, detalle: "Fondo" },
+        { longitud: 220, angulo: 270, detalle: "Aleta Der" },
+        { longitud: 50, angulo: 0, detalle: "Pestaña Cubierta" }
       ];
       setPliegues(plieguesEstandar);
       setMatrizPliegues({}); 
-      setMensaje("✅ Plantilla de 5 caras estándar restaurada.");
+      setMensaje("✅ Plantilla estándar restaurada.");
     }
   };
 
   const agregarPliegue = () => {
-    if (!nuevoLongitud) return;
+    if (!nuevoLongitud || !nuevoAngulo) return;
     setPliegues([...pliegues, { longitud: parseFloat(nuevoLongitud) || 0, angulo: parseFloat(nuevoAngulo) || 0, detalle: nuevoDetalle }]);
-    setNuevoLongitud(""); setNuevoAngulo("90"); setNuevoDetalle("");
+    setNuevoLongitud(""); setNuevoAngulo(""); setNuevoDetalle("");
   };
 
   const eliminarPliegue = (index) => {
@@ -230,21 +267,12 @@ const DisenadorCanales = () => {
     setMensaje("🗑️ Restablecido a plantilla base."); 
   };
 
-
-  // ==========================================
-  // 7. VARIABLES DE APOYO Y ESTADÍSTICAS
-  // ==========================================
   const plieguesHitoActual = matrizPliegues[hitoSeleccionado] || pliegues.map(p => ({ ...p }));
   const desarrolloHitoActual = plieguesHitoActual.reduce((s, p) => s + (parseFloat(p.longitud) || 0), 0);
-  const alertaDesarrollo = desarrolloHitoActual < 1000 
-    ? { color: '#16a34a', texto: '✅ (Estándar 1m)' } 
-    : desarrolloHitoActual < 1200 
-      ? { color: '#ea580c', texto: '⚠️ (Especial 1.2m)' } 
-      : { color: '#dc2626', texto: '🚨 EXCEDE MÁXIMO' };
-
+  const alertaDesarrollo = desarrolloHitoActual < 1000 ? { color: '#16a34a', texto: '✅ (Estándar 1m)' } : desarrolloHitoActual < 1200 ? { color: '#ea580c', texto: '⚠️ (Especial 1.2m)' } : { color: '#dc2626', texto: '🚨 EXCEDE MÁXIMO' };
 
   // ==========================================
-  // 8. COMUNICACIÓN CON BD (SUPABASE)
+  // 8. COMUNICACIÓN CON BD
   // ==========================================
   const guardarCanalDB = async () => {
     setMensaje("Guardando en BD...");
@@ -253,10 +281,7 @@ const DisenadorCanales = () => {
       tramos: { modulo: "canales", tituloHoja, nombreEje, numColumnas, calibreCanal, invertirNumeracion, configColumnas, pliegues, matrizPliegues, colorInterior, anchoAbertura, ladoAbrir, ladoCubierta },
       ultima_actualizacion: new Date()
     };
-    let res = projectId 
-      ? await supabase.from('diseños_canales').update(payload).eq('id', projectId) 
-      : await supabase.from('diseños_canales').insert([payload]).select();
-    
+    let res = projectId ? await supabase.from('diseños_canales').update(payload).eq('id', projectId) : await supabase.from('diseños_canales').insert([payload]).select();
     if (!res.error && res.data?.length > 0) setProjectId(res.data[0].id);
     setMensaje(res.error ? "❌ Error de guardado" : "✅ Respaldo exitoso");
   };
@@ -283,52 +308,24 @@ const DisenadorCanales = () => {
     setLadoCubierta(info.ladoCubierta || "ninguno");
     setInvertirNumeracion(!!info.invertirNumeracion); 
     setConfigColumnas(info.configColumnas || {});
-    
     if (info.pliegues) setPliegues(info.pliegues);
     if (info.matrizPliegues) setMatrizPliegues(info.matrizPliegues);
-    
     setModalAbierto(false); 
     setMensaje("✅ Diseño cargado");
   };
 
-
-  // ==========================================
-  // 9. FUNCIONES DE MENÚ CONTEXTUAL (PLANTA)
-  // ==========================================
-  const abrirMenuColumna = (e, colId) => { 
-    e.preventDefault(); 
-    setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: false, traslapoIndex: null }); 
-  };
-  
-  const abrirMenuTraslapo = (e, colId, index) => { 
-    e.preventDefault(); 
-    e.stopPropagation(); 
-    setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: true, traslapoIndex: index }); 
-  };
+  const abrirMenuColumna = (e, colId) => { e.preventDefault(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: false, traslapoIndex: null }); };
+  const abrirMenuTraslapo = (e, colId, index) => { e.preventDefault(); e.stopPropagation(); setMenuFlotante({ visible: true, x: e.clientX, y: e.clientY, columnaId: colId, esTraslapo: true, traslapoIndex: index }); };
 
   const actualizarPropiedadColumna = (colId, campo, valor) => {
     let valorFinal = valor;
-    if (campo === 'longitudDerecha') {
-      if (parseFloat(valor) > 6000) {
-        valorFinal = "6000";
-        setMensaje("⚠️ Línea máxima es 6000 mm.");
-      } else {
-        setMensaje("");
-      }
-    }
+    if (campo === 'longitudDerecha' && parseFloat(valor) > 6000) valorFinal = "6000";
     setConfigColumnas(prev => ({ ...prev, [colId]: { ...prev[colId], [campo]: valorFinal } }));
   };
 
   const actualizarPropiedadTraslapo = (colId, index, campo, valor) => {
     let valorFinal = valor;
-    if (campo === 'longitud' || campo === 'longitudCierre') {
-      if (parseFloat(valor) > 6000) {
-        valorFinal = "6000";
-        setMensaje("⚠️ Traslapo máximo 6000 mm.");
-      } else {
-        setMensaje("");
-      }
-    }
+    if ((campo === 'longitud' || campo === 'longitudCierre') && parseFloat(valor) > 6000) valorFinal = "6000";
     setConfigColumnas(prev => {
       const listaOriginal = [...(prev[colId]?.listaTraslapos || [])];
       listaOriginal[index] = { ...listaOriginal[index], [campo]: valorFinal };
@@ -365,14 +362,7 @@ const DisenadorCanales = () => {
 
   const setSoscoType = (tipo) => {
     setConfigColumnas(prev => ({
-      ...prev,
-      [menuFlotante.columnaId]: {
-        ...prev[menuFlotante.columnaId],
-        soscoCentro: tipo === 'c',
-        soscoIzquierdo: tipo === 'i',
-        soscoDerecho: tipo === 'd',
-        dosSoscos: tipo === 'dos'
-      }
+      ...prev, [menuFlotante.columnaId]: { ...prev[menuFlotante.columnaId], soscoCentro: tipo === 'c', soscoIzquierdo: tipo === 'i', soscoDerecho: tipo === 'd', dosSoscos: tipo === 'dos' }
     }));
   };
 
@@ -434,6 +424,7 @@ const DisenadorCanales = () => {
         let finX = sigCol.x - (parseFloat(configColumnas[sigCol.id]?.planaIzquierda) > 0 ? anchoFijoPlana : parseFloat(configColumnas[sigCol.id]?.planaCentro) > 0 ? anchoFijoPlana/2 : 0);
         const anchoMaxDisponibleX = finX - inicioX;
 
+        // 💡 LÓGICA RESTAURADA Y PROPORCIONAL PARA LOS TRASLAPOS DE VISTA 1
         if (listaT.length > 0) {
           const totalSegmentos = listaT.length + (listaT[listaT.length - 1].conectarA === 'columna' ? 1 : 0);
           const pixelMinimoGarantizado = Math.max(14, 22 - (numColumnas * 0.3));
@@ -450,6 +441,7 @@ const DisenadorCanales = () => {
             const mmTramoActual = parseFloat(traslapo.longitud) || 0;
             const parteProporcional = sumatoriaMilimetrosTotal > 0 ? (mmTramoActual / sumatoriaMilimetrosTotal) * pixelesRemanentesProporcionales : 0;
             const xSiguiente = xCursor + pixelMinimoGarantizado + parteProporcional;
+            
             const pend = parseFloat(traslapo.pendiente) || 0;
             const dY = (xSiguiente - xCursor) * Math.sin((pend * Math.PI) / 180);
             const yFinal = yActual + dY;
@@ -486,26 +478,28 @@ const DisenadorCanales = () => {
     ? colActual.listaTraslapos[menuFlotante.traslapoIndex] 
     : null;
 
-
-  // ==========================================
-  // RENDERIZADO PRINCIPAL
-  // ==========================================
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Arial', backgroundColor: '#f0f2f5' }} onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })}>
+    <div className="main-container" style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: 'Arial', backgroundColor: '#f0f2f5', overflow: 'hidden' }} onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })}>
       
-      {/* 🚀 INYECCIÓN DE ESTILOS DE IMPRESIÓN AJUSTADOS A 1000px */}
       <style>
         {`
           @media print {
             .no-print { display: none !important; }
-            body, html { background-color: white !important; margin: 0 !important; padding: 0 !important; }
+            body, html, .main-container, .right-panel { 
+              background-color: white !important; 
+              margin: 0 !important; 
+              padding: 0 !important; 
+              height: auto !important; 
+              overflow: visible !important;
+              display: block !important;
+            }
             @page { 
               size: letter landscape; 
-              margin: 0.5cm; 
+              margin: 0.2cm; 
             }
             .carta-contenedor {
               width: 100% !important;
-              max-width: 1000px !important; /* Limite estricto para encajar en hoja horizontal */
+              max-width: 1000px !important;
               margin: 0 auto !important;
               padding: 0 !important;
               box-shadow: none !important;
@@ -518,12 +512,12 @@ const DisenadorCanales = () => {
       </style>
 
       {/* ============================================================== */}
-      {/* 🎛️ PANEL IZQUIERDO: HERRAMIENTAS                                 */}
+      {/* 🎛️ PANEL IZQUIERDO (CON SCROLL INDEPENDIENTE)                    */}
       {/* ============================================================== */}
-      <div className="no-print" style={{ width: '215px', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '10px', boxSizing: 'border-box' }}>
+      <div className="sidebar no-print" style={{ width: '215px', minWidth: '215px', height: '100%', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '10px', boxSizing: 'border-box' }}>
         
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          <button style={{ ...btnStyle, flex: 1 }} onClick={() => { setProjectId(null); setConfigColumnas({}); setNumColumnasInput("6"); setNumColumnas(6); setMatrizPliegues({}); setMensaje("✨ Restablecido"); }}>Nuevo</button>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', flexWrap: 'wrap' }}>
+          <button style={{ ...btnStyle, flex: 1 }} onClick={nuevoDocumento}>Nuevo</button>
           <button style={{ ...btnStyle, flex: 1 }} onClick={abrirModalCarga}>Abrir</button>
           <button style={{ ...btnStyle, backgroundColor: '#28a745', color: '#fff', flex: '1 1 40%' }} onClick={guardarCanalDB}>Guardar</button>
           <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff', flex: '1 1 40%' }}>Imprimir</button>
@@ -532,13 +526,13 @@ const DisenadorCanales = () => {
         <p style={{ color: mensaje.includes("⚠️") || mensaje.includes("❌") || mensaje.includes("🚨") ? '#dc2626' : '#2563eb', fontSize: '11px', fontWeight: 'bold', margin: '4px 0' }}>{mensaje}</p>
 
         <label style={labelTitleStyle}>PROYECTO / ARCHIVO:</label>
-        <input type="text" style={{ ...inputStyle, marginBottom: '8px' }} value={nombreArchivo} onChange={e => setNombreArchivo(e.target.value)} />
+        <input type="text" style={{ ...inputStyle, marginBottom: '4px' }} value={nombreArchivo} onChange={e => setNombreArchivo(e.target.value)} />
 
         <label style={labelTitleStyle}>TÍTULO HOJA:</label>
-        <input type="text" style={{ ...inputStyle, marginBottom: '8px' }} value={tituloHoja} onChange={e => setTituloHoja(e.target.value)} />
+        <input type="text" style={{ ...inputStyle, marginBottom: '4px' }} value={tituloHoja} onChange={e => setTituloHoja(e.target.value)} />
 
         <label style={labelTitleStyle}>IDENTIFICACIÓN EJE:</label>
-        <input type="text" style={{ ...inputStyle, marginBottom: '8px', color: 'red', fontWeight: 'bold' }} value={nombreEje} onChange={e => setNombreEje(e.target.value)} />
+        <input type="text" style={{ ...inputStyle, marginBottom: '4px', color: 'red', fontWeight: 'bold' }} value={nombreEje} onChange={e => setNombreEje(e.target.value)} />
 
         <div style={cardStyle}>
           <label style={{ ...cardTitleStyle, fontSize: '9.5px' }}>Estructura y Calibres</label>
@@ -556,7 +550,8 @@ const DisenadorCanales = () => {
               </select>
             </div>
           </div>
-          <button onClick={() => setInvertirNumeracion(!invertirNumeracion)} style={{ ...btnStyle, width: '100%', marginTop: '8px', fontSize: '9px' }}>🔄 Voltear Sentido Numérico</button>
+          <button onClick={duplicarEstructuraViga1} style={{ ...btnStyle, width: '100%', marginTop: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '9px', fontWeight: 'bold' }}>📋 Copiar Diseño Viga 1 a Todas</button>
+          <button onClick={() => setInvertirNumeracion(!invertirNumeracion)} style={{ ...btnStyle, width: '100%', marginTop: '4px', fontSize: '9px' }}>🔄 Voltear Sentido Numérico</button>
         </div>
 
         <div style={{ ...cardStyle, backgroundColor: '#f1f5f9', border: '1px solid #1e293b' }}>
@@ -594,38 +589,24 @@ const DisenadorCanales = () => {
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* PLANTILLA BASE CON SELECTOR DE COLOR Y ANOTACIONES        */}
-        {/* ========================================================= */}
+        {/* PLANTILLA BASE */}
         <div style={{ ...cardStyle, backgroundColor: '#fcfaf7', border: '1px solid #f39c12' }}>
           <label style={{ ...cardTitleStyle, color: '#d35400', fontSize: '9.5px' }}>Plantilla Base (Caras)</label>
-          
-          <button 
-            onClick={restaurarPlantillaEstandar} 
-            style={{ ...btnStyle, width: '100%', marginTop: '6px', marginBottom: '6px', backgroundColor: '#fef08a', color: '#854d0e', border: '1px solid #eab308', fontWeight: 'bold' }}
-          >
-            🔄 Restaurar 5 Caras Estándar
-          </button>
-
+          <button onClick={restaurarPlantillaEstandar} style={{ ...btnStyle, width: '100%', marginTop: '6px', marginBottom: '6px', backgroundColor: '#fef08a', color: '#854d0e', border: '1px solid #eab308', fontWeight: 'bold' }}>🔄 Restaurar 5 Caras Estándar</button>
           <div style={{ borderTop: '1px solid #fcd34d', borderBottom: '1px solid #fcd34d', padding: '6px 0', marginBottom: '6px', marginTop: '4px' }}>
-            
             <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginBottom: '2px' }}>Acabado de Color:</label>
             <select style={{ ...inputMiniStyle, fontSize: '10px' }} value={colorInterior} onChange={e => setColorInterior(e.target.value)}>
               <option value="Blanco">Interior Blanco / Exterior Gris</option>
               <option value="Gris">Interior Gris / Exterior Blanco</option>
             </select>
-
-            {/* NUEVO SELECTOR PARA "LADO CUBIERTA" EN VISTA 2 */}
             <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Lado Cubierta:</label>
             <select style={{ ...inputMiniStyle, fontSize: '10px' }} value={ladoCubierta} onChange={e => setLadoCubierta(e.target.value)}>
               <option value="ninguno">Ninguno</option>
               <option value="P1">Pestaña P1 (Arriba)</option>
               <option value="P_ULTIMA">Última Pestaña (Abajo)</option>
             </select>
-
             <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Ancho de Abertura (mm):</label>
             <input type="text" style={{ ...inputMiniStyle, fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }} value={anchoAbertura} onChange={e => setAnchoAbertura(e.target.value)} placeholder="Ej. 530" />
-
             <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Aleta a Abrir (Ángulo Libre):</label>
             <select style={{ ...inputMiniStyle, fontSize: '10px' }} value={ladoAbrir} onChange={e => setLadoAbrir(e.target.value)}>
               <option value="ninguno">Ninguno (Todo Recto)</option>
@@ -638,8 +619,8 @@ const DisenadorCanales = () => {
             {pliegues.map((p, idx) => (
               <div key={idx} style={{ display: 'flex', gap: '2px', marginBottom: '4px', alignItems: 'center', background: '#fff', padding: '2px' }}>
                 <span style={{ fontSize: '8px', fontWeight: 'bold', minWidth: '15px' }}>P{idx+1}</span>
-                <input type="text" style={{ ...inputMiniStyle, width: '35px', fontSize: '9px' }} value={p.longitud} onChange={e => modificarPliegue(idx, 'longitud', e.target.value)} />
                 <input type="text" style={{ ...inputMiniStyle, width: '25px', fontSize: '9px' }} value={p.angulo} onChange={e => modificarPliegue(idx, 'angulo', e.target.value)} />
+                <input type="text" style={{ ...inputMiniStyle, width: '35px', fontSize: '9px' }} value={p.longitud} onChange={e => modificarPliegue(idx, 'longitud', e.target.value)} />
                 <input type="text" style={{ ...inputMiniStyle, flex: 1, fontSize: '9px' }} value={p.detalle} onChange={e => modificarPliegue(idx, 'detalle', e.target.value)} />
                 <button onClick={() => eliminarPliegue(idx)} style={{ border: 'none', background: 'transparent', color: 'red', fontSize: '10px', padding: '0 2px' }}>✕</button>
               </div>
@@ -647,8 +628,8 @@ const DisenadorCanales = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <div style={{ display: 'flex', gap: '2px' }}>
-              <input type="number" style={{ ...inputMiniStyle, flex: 1 }} value={nuevoLongitud} placeholder="L (mm)" onChange={e => setNuevoLongitud(e.target.value)} />
               <input type="number" style={{ ...inputMiniStyle, flex: 1 }} value={nuevoAngulo} placeholder="Ang (°)" onChange={e => setNuevoAngulo(e.target.value)} />
+              <input type="number" style={{ ...inputMiniStyle, flex: 1 }} value={nuevoLongitud} placeholder="L (mm)" onChange={e => setNuevoLongitud(e.target.value)} />
             </div>
             <button onClick={agregarPliegue} style={{ ...btnStyle, backgroundColor: '#f39c12', color: '#fff', border: 'none' }}>➕ Añadir</button>
           </div>
@@ -656,13 +637,13 @@ const DisenadorCanales = () => {
       </div>
 
       {/* ============================================================== */}
-      {/* 📄 PANEL DERECHO: PLANO DE TRABAJO                             */}
+      {/* 📄 PANEL DERECHO (CON SCROLL INDEPENDIENTE)                    */}
       {/* ============================================================== */}
-      <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <div className="carta-contenedor" style={{ width: '100%', maxWidth: '1000px', background: '#fff', padding: '8px 12px', boxSizing: 'border-box', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+      <div className="right-panel" style={{ flex: 1, padding: '5px', overflowY: 'auto', height: '100%', display: 'flex', justifyContent: 'center' }}>
+        <div className="carta-contenedor" style={{ width: '100%', maxWidth: '1000px', background: '#fff', padding: '5px 12px', boxSizing: 'border-box', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f39c12', paddingBottom: '2px', marginBottom: '2px' }}>
-            <img src={logoCortiza} alt="Cortiza" style={{ width: '80px', objectFit: 'contain' }} />
+            <img src={logoCortiza} alt="Cortiza" style={{ width: '70px', objectFit: 'contain' }} />
             <div style={{ textAlign: 'right' }}>
               <h1 style={{ margin: 0, fontSize: '14px', color: '#f39c12', fontWeight: 'bold' }}>{tituloHoja}</h1>
               <span style={{ fontSize: '10px', color: '#7f8c8d' }}>(Calibre {calibreCanal})</span>
@@ -671,38 +652,31 @@ const DisenadorCanales = () => {
 
           <div style={{ color: 'red', fontWeight: 'bold', fontSize: '12px', marginBottom: '2px' }}>{nombreEje}</div>
 
-          {/* VISTA 1: DIBUJO GEOMÉTRICO (AHORA CON ANCHO 1000 PARA EXPANDIRSE) */}
-          <div style={{ width: '100%', height: '150px', border: '1px solid #cbd5e1', backgroundColor: '#fcfcfc', borderRadius: '4px', position: 'relative' }}>
-            <svg width="100%" height="100%" viewBox="0 0 1000 150">
-              {columnasCalculadas.map((col) => (
-                <g key={col.id} onContextMenu={(e) => abrirMenuColumna(e, col.id)} style={{ cursor: 'context-menu' }}>
-                  <rect x={col.x - 20} y={10} width="40" height="140" fill="transparent" />
-                  <text x={col.x} y={20} fontSize="12" fontWeight="bold" textAnchor="middle">{col.numero}</text>
-                  <line x1={col.x} y1={45} x2={col.x} y2={140} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,4" />
-                </g>
-              ))}
-
+          {/* VISTA 1: DIBUJO GEOMÉTRICO (Altura escalable sin cortar el canvas) */}
+          <div style={{ width: '100%', border: '1px solid #cbd5e1', backgroundColor: '#fcfcfc', borderRadius: '4px', position: 'relative', marginBottom: '2px' }}>
+            <svg width="100%" viewBox="0 0 1000 150" style={{ display: 'block' }}>
+              
               {Object.keys(datosGeometria).map((colId) => {
                 const geom = datosGeometria[colId];
                 return (
                   <g key={`geom-${colId}`}>
                     {geom.lineas.map((l, idx) => (
-                      <line key={idx} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={l.color} strokeWidth={l.width} />
+                      <line key={idx} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={l.color} strokeWidth={l.width} style={{ pointerEvents: 'none' }} />
                     ))}
                     {geom.ejesTraslapos.map((eje, tIdx) => (
                       <g key={`eje-t-${tIdx}`}>
-                        <line x1={eje.x} y1={40} x2={eje.x} y2={140} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" />
-                        <rect x={eje.x - 10} y={eje.clickY - 10} width="20" height="20" fill="transparent" style={{ cursor: 'context-menu' }} onContextMenu={(e) => abrirMenuTraslapo(e, colId, eje.index)} />
+                        <line x1={eje.x} y1={40} x2={eje.x} y2={120} stroke="#3b82f6" strokeWidth="1" strokeDasharray="3,3" style={{ pointerEvents: 'none' }} />
                         <text x={eje.x} y={eje.clickY + 4} fontSize="11" fill="blue" fontWeight="bold" textAnchor="middle" style={{ pointerEvents: 'none' }}>X</text>
+                        <rect x={eje.x - 20} y={eje.clickY - 20} width="40" height="40" fill="transparent" style={{ cursor: 'context-menu' }} onContextMenu={(e) => abrirMenuTraslapo(e, colId, eje.index)} />
                       </g>
                     ))}
                   </g>
                 );
               })}
 
-              {Object.keys(datosGeometria).map((colId) => <g key={`sosco-${colId}`}>{datosGeometria[colId].soscosSVG}</g>)}
+              {Object.keys(datosGeometria).map((colId) => <g key={`sosco-${colId}`} style={{ pointerEvents: 'none' }}>{datosGeometria[colId].soscosSVG}</g>)}
               {Object.keys(datosGeometria).map((colId) => (
-                <g key={`cota-planta-${colId}`}>
+                <g key={`cota-planta-${colId}`} style={{ pointerEvents: 'none' }}>
                   {datosGeometria[colId].cotas.map((c, idx) => (
                     <g key={idx}>
                       <rect x={c.x - 12} y={c.y - 8} width="24" height="10" fill="white" fillOpacity="0.85" />
@@ -711,10 +685,17 @@ const DisenadorCanales = () => {
                   ))}
                 </g>
               ))}
+
+              {columnasCalculadas.map((col) => (
+                <g key={col.id}>
+                  <text x={col.x} y={20} fontSize="12" fontWeight="bold" textAnchor="middle" style={{ pointerEvents: 'none' }}>{col.numero}</text>
+                  <line x1={col.x} y1={45} x2={col.x} y2={120} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="4,4" style={{ pointerEvents: 'none' }} />
+                  <rect x={col.x - 30} y={0} width="60" height="150" fill="transparent" style={{ cursor: 'context-menu' }} onContextMenu={(e) => abrirMenuColumna(e, col.id)} />
+                </g>
+              ))}
             </svg>
           </div>
 
-          {/* VISTA 2 y 3: COMPONENTE DE CORTE LATERAL (Pase de nuevas props) */}
           <div style={{ marginTop: '2px' }}>
             <CorteLateralCanal 
               plieguesGlobales={pliegues}
