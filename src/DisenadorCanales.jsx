@@ -255,11 +255,38 @@ const DisenadorCanales = () => {
   };
 
   const duplicarMedidasEnTodosLosHitos = () => {
-    const copiaMatriz = {};
-    const plieguesModeloAAplicar = matrizPliegues[hitoSeleccionado] || pliegues.map(p => ({ ...p }));
-    hitosOrdenados.forEach(hito => { copiaMatriz[hito.keyHash] = plieguesModeloAAplicar.map(p => ({ ...p })); });
-    setMatrizPliegues(copiaMatriz);
-    setMensaje("📋 Medidas copiadas a toda la obra.");
+    if (window.confirm("¿Copiar el patrón de medidas de la Viga 1 y sus traslapos a toda la canal?")) {
+      const copiaMatriz = { ...matrizPliegues };
+      
+      // 1. Extraemos las medidas exactas configuradas en la Viga 1 (índice 0)
+      const medidasViga1 = copiaMatriz['viga-0'] || pliegues.map(p => ({ ...p }));
+      
+      // 2. Extraemos las medidas de los traslapos que pertenezcan a la Viga 1
+      const traslaposViga1 = [];
+      const numTraslaposV1 = (configColumnas[0]?.listaTraslapos || []).length;
+      for (let t = 0; t < numTraslaposV1; t++) {
+        const keyT = `traslapo-0-${t}`;
+        traslaposViga1.push(copiaMatriz[keyT] || pliegues.map(p => ({ ...p })));
+      }
+
+      // 3. Replicamos este "Patrón" a las demás vigas (desde la 2 en adelante)
+      for (let i = 1; i < numColumnas; i++) {
+        // Pegamos las medidas base en la Viga i
+        copiaMatriz[`viga-${i}`] = medidasViga1.map(p => ({ ...p }));
+        
+        // Pegamos las medidas en los traslapos de la Viga i
+        const numTraslaposI = (configColumnas[i]?.listaTraslapos || []).length;
+        for (let t = 0; t < numTraslaposI; t++) {
+          const keyT_I = `traslapo-${i}-${t}`;
+          // Si la viga 1 tenía un traslapo equivalente, usamos esa medida. Si no, usamos la medida de la Viga 1 como respaldo.
+          const medidasAUsar = traslaposViga1[t] || medidasViga1; 
+          copiaMatriz[keyT_I] = medidasAUsar.map(p => ({ ...p }));
+        }
+      }
+      
+      setMatrizPliegues(copiaMatriz);
+      setMensaje("📋 Patrón de medidas de Viga 1 copiado a todas.");
+    }
   };
 
   const reiniciarMatrizHitos = () => { 
