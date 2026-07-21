@@ -21,6 +21,7 @@ const DisenadorCanales = () => {
   const [ladoCubierta, setLadoCubierta] = useState("ninguno");
 
   const [invertirNumeracion, setInvertirNumeracion] = useState(false);
+  const [invertirTramos, setInvertirTramos] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [configColumnas, setConfigColumnas] = useState({});
 
@@ -504,6 +505,37 @@ const DisenadorCanales = () => {
   const traslapoActual = (menuFlotante.esTraslapo && colActual && colActual.listaTraslapos && menuFlotante.traslapoIndex !== null) 
     ? colActual.listaTraslapos[menuFlotante.traslapoIndex] 
     : null;
+    // LÓGICA VISTA 4: Extraer tramos (T-1) y Nodos de unión (A-1, A-2)
+  const tramosVista4 = [];
+  const nodosRaw = [];
+  
+  columnasCalculadas.forEach(col => {
+    if (datosGeometria[col.id]) {
+      datosGeometria[col.id].lineas.forEach(linea => {
+        if (linea.color === "#2c3e50" || linea.color === "blue") { 
+          // Centro para la etiqueta T-X
+          tramosVista4.push({ x: (linea.x1 + linea.x2) / 2, y: (linea.y1 + linea.y2) / 2 });
+          // Extremos para las etiquetas de Nodos (A-1, A-2)
+          nodosRaw.push({ x: linea.x1, y: linea.y1 });
+          nodosRaw.push({ x: linea.x2, y: linea.y2 });
+        }
+      });
+    }
+  });
+  tramosVista4.sort((a, b) => a.x - b.x);
+  const totalTramos = tramosVista4.length;
+
+  // Filtrar nodos únicos ordenados de izquierda a derecha (margen de error 1px)
+  const nodosUnicos = [];
+  nodosRaw.sort((a, b) => a.x - b.x).forEach(nodo => {
+    if (nodosUnicos.length === 0 || Math.abs(nodosUnicos[nodosUnicos.length - 1].x - nodo.x) > 1) {
+      nodosUnicos.push(nodo);
+    }
+  });
+  const totalNodos = nodosUnicos.length;
+
+  // Extraer automáticamente la última letra del Identificador de Eje (ej: "Canal eje A" -> "A")
+  const letraEje = nombreEje.trim().split(' ').pop().charAt(0).toUpperCase() || 'A';
 
   return (
     <div className="main-container" style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: 'Arial', backgroundColor: '#f0f2f5', overflow: 'hidden' }} onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })}>
@@ -543,11 +575,15 @@ const DisenadorCanales = () => {
       {/* ============================================================== */}
       <div className="sidebar no-print" style={{ width: '215px', minWidth: '215px', height: '100%', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '10px', boxSizing: 'border-box' }}>
         
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', flexWrap: 'wrap' }}>
-          <button style={{ ...btnStyle, flex: 1 }} onClick={nuevoDocumento}>Nuevo</button>
-          <button style={{ ...btnStyle, flex: 1 }} onClick={abrirModalCarga}>Abrir</button>
-          <button style={{ ...btnStyle, backgroundColor: '#28a745', color: '#fff', flex: '1 1 40%' }} onClick={guardarCanalDB}>Guardar</button>
-          <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff', flex: '1 1 40%' }}>Imprimir</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+          {/* Fila 1: Nuevo, Abrir, Guardar */}
+          <div style={{ display: 'flex', gap: '5px', width: '100%' }}>
+            <button onClick={nuevoDocumento} style={{ ...btnStyle, flex: 1, backgroundColor: '#f39c12', color: '#fff', fontWeight: 'bold', border: 'none' }}>Nuevo</button>
+            <button onClick={abrirModalCarga} style={{ ...btnStyle, flex: 1, backgroundColor: '#f39c12', color: '#fff', fontWeight: 'bold', border: 'none' }}>Abrir</button>
+            <button onClick={guardarCanalDB} style={{ ...btnStyle, flex: 1, backgroundColor: '#28a745', color: '#fff', fontWeight: 'bold', border: 'none' }}>Guardar</button>
+          </div>
+          {/* Fila 2: Imprimir */}
+          <button onClick={() => window.print()} style={{ ...btnStyle, width: '100%', backgroundColor: '#5bc0de', color: '#fff', fontWeight: 'bold', border: 'none', padding: '8px' }}>Imprimir</button>
         </div>
 
         <p style={{ color: mensaje.includes("⚠️") || mensaje.includes("❌") || mensaje.includes("🚨") ? '#dc2626' : '#2563eb', fontSize: '11px', fontWeight: 'bold', margin: '4px 0' }}>{mensaje}</p>
@@ -579,6 +615,7 @@ const DisenadorCanales = () => {
           </div>
           <button onClick={duplicarEstructuraViga1} style={{ ...btnStyle, width: '100%', marginTop: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '9px', fontWeight: 'bold' }}>📋 Copiar Diseño Viga 1 a Todas</button>
           <button onClick={() => setInvertirNumeracion(!invertirNumeracion)} style={{ ...btnStyle, width: '100%', marginTop: '4px', fontSize: '9px' }}>🔄 Voltear Sentido Numérico</button>
+          <button onClick={() => setInvertirTramos(!invertirTramos)} style={{ ...btnStyle, width: '100%', marginTop: '4px', fontSize: '9px' }}>🔄 Voltear Tramos (T-1, T-2...)</button>
         </div>
 
         <div style={{ ...cardStyle, backgroundColor: '#f1f5f9', border: '1px solid #1e293b' }}>
@@ -634,7 +671,7 @@ const DisenadorCanales = () => {
             </select>
             <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Ancho de Abertura (mm):</label>
             <input type="text" style={{ ...inputMiniStyle, fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }} value={anchoAbertura} onChange={e => setAnchoAbertura(e.target.value)} placeholder="Ej. 530" />
-            <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Aleta a Abrir (Ángulo Libre):</label>
+            <label style={{ fontSize: '9px', fontWeight: 'bold', color: '#b45309', display: 'block', marginTop: '6px', marginBottom: '2px' }}>Abrir Aleta (Ángulo Libre):</label>
             <select style={{ ...inputMiniStyle, fontSize: '10px' }} value={ladoAbrir} onChange={e => setLadoAbrir(e.target.value)}>
               <option value="ninguno">Ninguno (Todo Recto)</option>
               <option value="izquierdo">Abrir Aleta Izquierda</option>
@@ -734,6 +771,80 @@ const DisenadorCanales = () => {
               ladoAbrir={ladoAbrir}
               ladoCubierta={ladoCubierta}
             />
+          </div>
+          {/* ========================================== */}
+          {/* VISTA 4: IDENTIFICACIÓN DE TRAMOS          */}
+          {/* ========================================== */}
+          <div style={{ marginTop: '2px', paddingTop: '4px', borderTop: '1px dashed #cbd5e1' }}>
+            <h3 style={{ fontSize: '11px', color: '#1e293b', margin: '0 0 2px 0', fontWeight: 'bold', textTransform: 'uppercase' }}>IDENTIFICACIÓN DE TRAMOS DE CANAL PARA LA INSTALACIÓN</h3>
+            <div style={{ width: '100%', border: '1px solid #cbd5e1', backgroundColor: '#fcfcfc', borderRadius: '4px', position: 'relative' }}>
+              
+              {/* SOLUCIÓN: Igualamos exactamente el viewBox y estilo al de la VISTA 1 para simetría perfecta */}
+              <svg width="100%" viewBox="0 0 1000 150" style={{ display: 'block' }}>
+                
+                {/* 1. Líneas, Zonas Planas y Soscos */}
+                {Object.keys(datosGeometria).map((colId) => {
+                  const geom = datosGeometria[colId];
+                  return (
+                    <g key={`v4-geom-${colId}`}>
+                      {geom.lineas.map((l, idx) => (
+                        <line key={idx} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={l.color} strokeWidth={l.width} style={{ pointerEvents: 'none' }} />
+                      ))}
+                    </g>
+                  );
+                })}
+                {Object.keys(datosGeometria).map((colId) => <g key={`v4-sosco-${colId}`} style={{ pointerEvents: 'none' }}>{datosGeometria[colId].soscosSVG}</g>)}
+
+                {/* 2. Etiquetas T-X */}
+                {tramosVista4.map((c, idx) => {
+                  const numeroTramo = invertirTramos ? (totalTramos - idx) : (idx + 1);
+                  const posY = c.y - 12; 
+                  return (
+                    <g key={`v4-tramo-${idx}`} style={{ pointerEvents: 'none' }}>
+                      <rect x={c.x - 10} y={posY - 7} width="20" height="9" fill="white" fillOpacity="0.85" rx="2" />
+                      <text x={c.x} y={posY} fontSize="7.5" fill="blue" fontWeight="bold" textAnchor="middle">T-{numeroTramo}</text>
+                    </g>
+                  );
+                })}
+
+                {/* 3. Nodos de inicio/fin: Líneas negras punteadas largas y Etiquetas */}
+                {nodosUnicos.map((nodo, idx) => {
+                  const numeroNodo = invertirTramos ? (totalNodos - idx) : (idx + 1);
+                  const yFinalLinea = nodo.y + 40; 
+                  return (
+                    <g key={`v4-nodo-${idx}`} style={{ pointerEvents: 'none' }}>
+                      <line x1={nodo.x} y1={nodo.y} x2={nodo.x} y2={yFinalLinea} stroke="black" strokeWidth="1" strokeDasharray="3,3" />
+                      <rect x={nodo.x - 7} y={yFinalLinea} width="14" height="20" fill="white" fillOpacity="0.85" rx="2" />
+                      <text x={nodo.x} y={yFinalLinea + 8} fontSize="9.5" fill="black" fontWeight="bold" textAnchor="middle">{letraEje}</text>
+                      <text x={nodo.x} y={yFinalLinea + 18} fontSize="9.5" fill="black" fontWeight="bold" textAnchor="middle">{numeroNodo}</text>
+                    </g>
+                  );
+                })}
+
+                {/* 4. Indicadores de columnas (Vigas) */}
+                {columnasCalculadas.map((col) => (
+                  <g key={`v4-col-${col.id}`}>
+                    <text x={col.x} y={20} fontSize="12" fontWeight="bold" textAnchor="middle" style={{ pointerEvents: 'none' }}>{col.numero}</text>
+                  </g>
+                ))}
+              </svg>
+
+              {/* 5. LEYENDA VISTA 4 - Con margen negativo para subirla y que quepa en la hoja */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 0 6px 15px', marginTop: '-15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: 'blue', fontWeight: 'bold', fontSize: '11.5px' }}>T - 1</span>
+                  <span style={{ color: 'blue', fontWeight: 'bold', fontSize: '11.5px' }}>Número del tramo de canal</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'black', fontWeight: 'bold', fontSize: '11.5px', lineHeight: '1' }}>
+                    <span>{letraEje}</span>
+                    <span>1</span>
+                  </div>
+                  <span style={{ color: 'black', fontWeight: 'bold', fontSize: '11.5px' }}>Identificación del inicio y final de cada tramo de Canal</span>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       </div>

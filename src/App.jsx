@@ -66,6 +66,6 @@ const menuContainerStyle = { display: 'flex', flexDirection: 'column', alignItem
 const cardMenuStyle = { width: '260px', padding: '30px', border: 'none', borderRadius: '12px', backgroundColor: '#fff', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'transform 0.2s', textAlign: 'center' };
 const cardMenuRemateStyle = { ...cardMenuStyle, borderTop: '6px solid #2563eb' };
 const cardMenuCanalStyle = { ...cardMenuStyle, borderTop: '6px solid #f39c12' };
-const btnVolverStyle = { position: 'fixed', top: '10px', right: '10px', zIndex: 1000, padding: '6px 12px', fontSize: '12px', backgroundColor: '#666', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' };
+const btnVolverStyle = { position: 'fixed', top: '15px', right: '15px', zIndex: 1000, padding: '8px 10px', fontSize: '11px', backgroundColor: '#f39c12', color: '#fff', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', width: '100px', textAlign: 'center', lineHeight: '1.3' };
 
 export default App;

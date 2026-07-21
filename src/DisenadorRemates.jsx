@@ -124,19 +124,24 @@ const DisenadorRemates = () => {
       `}</style>
       
       {/* PANEL DE CONTROL IZQUIERDO */}
-      <div className="no-print" style={{ width: '400px', backgroundColor: '#fff', borderRight: '2px solid #ddd', overflowY: 'auto', padding: '20px', boxShadow: '2px 0 5px rgba(0,0,0,0.05)' }}>
+      <div className="no-print" style={{ width: '280px', backgroundColor: '#fff', borderRight: '2px solid #ddd', overflowY: 'auto', padding: '15px', boxShadow: '2px 0 5px rgba(0,0,0,0.05)' }}>
         
         {/* LOGO INSERTO EN LA PARTE SUPERIOR IZQUIERDA DEL PANEL */}
         <div style={{ display: 'flex', justifyContent: 'left', marginBottom: '15px' }}>
           <img src={logoCortiza} alt="Logo Cortiza" style={{ maxWidth: '100px', height: 'auto' }} />
         </div>
 
+        {/* CONTENEDOR DE BOTONES Y NOMBRE DE ARCHIVO */}
         <div style={{ marginBottom: '5px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>
-          <div style={{ display: 'flex', gap: '5px', marginBottom: '1px' }}>
-            <button onClick={nuevoProyecto} style={btnStyle}>Nuevo</button>
-            <button onClick={listarProyectos} style={btnStyle}>Abrir</button>
-            <button onClick={guardarProyecto} style={{ ...btnStyle, backgroundColor: '#28a745', color: '#fff' }}>Guardar</button>
-            <button onClick={() => window.print()} style={{ ...btnStyle, backgroundColor: '#000', color: '#fff' }}>Imprimir</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+            {/* Fila 1: Nuevo, Abrir, Guardar */}
+            <div style={{ display: 'flex', gap: '5px', width: '100%' }}>
+              <button onClick={nuevoProyecto} style={{ ...btnStyle, flex: 1, backgroundColor: '#f39c12', color: '#fff', fontWeight: 'bold', border: 'none' }}>Nuevo</button>
+              <button onClick={listarProyectos} style={{ ...btnStyle, flex: 1, backgroundColor: '#f39c12', color: '#fff', fontWeight: 'bold', border: 'none' }}>Abrir</button>
+              <button onClick={guardarProyecto} style={{ ...btnStyle, flex: 1, backgroundColor: '#28a745', color: '#fff', fontWeight: 'bold', border: 'none' }}>Guardar</button>
+            </div>
+            {/* Fila 2: Imprimir */}
+            <button onClick={() => window.print()} style={{ ...btnStyle, width: '100%', backgroundColor: '#5bc0de', color: '#fff', fontWeight: 'bold', border: 'none', padding: '8px' }}>Imprimir</button>
           </div>
           <label style={{ fontSize: '10px', color: '#666' }}>NOMBRE DEL ARCHIVO:</label>
           <input style={inputStyle} value={nombreArchivo} onChange={e => setNombreArchivo(e.target.value)} />
@@ -212,7 +217,7 @@ const DisenadorRemates = () => {
             ))}
           </div>
         ))}
-        <button onClick={() => setRemates([...remates, { id: Date.now(), titulo: "Nuevo Remate", caraColor: "ninguna", tramos: [{ longitud: 100, angulo: 0 }], caracteristicas: [{ key: "Calibre", value: "" }, { key: "Color", value: "" }, { key: "Desarrollo", value: "0 mm" }, { key: "Unidades", value: "" }] }])} style={{ width: '100%', padding: '12px', cursor: 'pointer', fontWeight: 'bold' }}>+ ADICIONAR OTRO REMATE</button>
+        <button onClick={() => setRemates([...remates, { id: Date.now(), titulo: "Nuevo Remate", caraColor: "ninguna", tramos: [{ longitud: 100, angulo: 0 }], caracteristicas: [{ key: "Calibre", value: "" }, { key: "Color", value: "" }, { key: "Desarrollo", value: "0 mm" }, { key: "Unidades", value: "" }] }])} style={{ width: '100%', padding: '12px', cursor: 'pointer', fontWeight: 'bold', backgroundColor: '#f39c12', color: '#fff', border: 'none', borderRadius: '4px' }}>+ ADICIONAR OTRO REMATE</button>
       </div>
 
       {/* ÁREA DE TRABAJO IMPRIMIBLE */}
@@ -244,7 +249,7 @@ const DisenadorRemates = () => {
             </div>
           ))}
         </div>
-      </div> {/* <-- ¡ESTA ETIQUETA ERA LA QUE FALTABA EN TU CÓDIGO! */}
+      </div> 
 
       {/* MODAL OPEN */}
       {showModal && (
