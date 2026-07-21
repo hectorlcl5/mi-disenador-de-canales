@@ -505,37 +505,6 @@ const DisenadorCanales = () => {
   const traslapoActual = (menuFlotante.esTraslapo && colActual && colActual.listaTraslapos && menuFlotante.traslapoIndex !== null)
     ? colActual.listaTraslapos[menuFlotante.traslapoIndex]
     : null;
-  // LÓGICA VISTA 4: Extraer tramos (T-1) y Nodos de unión (A-1, A-2)
-  const tramosVista4 = [];
-  const nodosRaw = [];
-
-  columnasCalculadas.forEach(col => {
-    if (datosGeometria[col.id]) {
-      datosGeometria[col.id].lineas.forEach(linea => {
-        if (linea.color === "#2c3e50" || linea.color === "blue") {
-          // Centro para la etiqueta T-X
-          tramosVista4.push({ x: (linea.x1 + linea.x2) / 2, y: (linea.y1 + linea.y2) / 2 });
-          // Extremos para las etiquetas de Nodos (A-1, A-2)
-          nodosRaw.push({ x: linea.x1, y: linea.y1 });
-          nodosRaw.push({ x: linea.x2, y: linea.y2 });
-        }
-      });
-    }
-  });
-  tramosVista4.sort((a, b) => a.x - b.x);
-  const totalTramos = tramosVista4.length;
-
-  // Filtrar nodos únicos ordenados de izquierda a derecha (margen de error 1px)
-  const nodosUnicos = [];
-  nodosRaw.sort((a, b) => a.x - b.x).forEach(nodo => {
-    if (nodosUnicos.length === 0 || Math.abs(nodosUnicos[nodosUnicos.length - 1].x - nodo.x) > 1) {
-      nodosUnicos.push(nodo);
-    }
-  });
-  const totalNodos = nodosUnicos.length;
-
-  // Extraer automáticamente la última letra del Identificador de Eje (ej: "Canal eje A" -> "A")
-  const letraEje = nombreEje.trim().split(' ').pop().charAt(0).toUpperCase() || 'A';
 
   return (
     <div className="main-container" style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: 'Arial', backgroundColor: '#f0f2f5', overflow: 'hidden' }} onClick={() => setMenuFlotante({ ...menuFlotante, visible: false })}>
@@ -770,82 +739,13 @@ const DisenadorCanales = () => {
               anchoAbertura={anchoAbertura}
               ladoAbrir={ladoAbrir}
               ladoCubierta={ladoCubierta}
+              //* ===> LAS 3 NUEVAS PROPIEDADES NECESARIAS PARA LA VISTA 4 <=== *//
+              datosGeometria={datosGeometria}
+              invertirTramos={invertirTramos}
+              nombreEje={nombreEje}
             />
           </div>
-          {/* ========================================== */}
-          {/* VISTA 4: IDENTIFICACIÓN DE TRAMOS          */}
-          {/* ========================================== */}
-          <div style={{ marginTop: '2px', paddingTop: '4px', borderTop: '0px dashed #f8f8f9' }}>
-            <h3 style={{ fontSize: '11px', color: '#1e293b', margin: '0 0 2px 0', fontWeight: 'bold', textTransform: 'uppercase' }}>IDENTIFICACIÓN DE TRAMOS DE CANAL PARA LA INSTALACIÓN</h3>
-            <div style={{ width: '100%', position: 'relative' }}>
-              
-              {/* SOLUCIÓN: Igualamos exactamente el viewBox y estilo al de la VISTA 1 para simetría perfecta */}
-              <svg width="100%" viewBox="0 0 1000 150" style={{ display: 'block' }}>
-                
-                {/* 1. Líneas, Zonas Planas y Soscos */}
-                {Object.keys(datosGeometria).map((colId) => {
-                  const geom = datosGeometria[colId];
-                  return (
-                    <g key={`v4-geom-${colId}`}>
-                      {geom.lineas.map((l, idx) => (
-                        <line key={idx} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={l.color} strokeWidth={l.width} style={{ pointerEvents: 'none' }} />
-                      ))}
-                    </g>
-                  );
-                })}
-                {Object.keys(datosGeometria).map((colId) => <g key={`v4-sosco-${colId}`} style={{ pointerEvents: 'none' }}>{datosGeometria[colId].soscosSVG}</g>)}
-
-                {/* 2. Etiquetas T-X */}
-                {tramosVista4.map((c, idx) => {
-                  const numeroTramo = invertirTramos ? (totalTramos - idx) : (idx + 1);
-                  const posY = c.y - 12; 
-                  return (
-                    <g key={`v4-tramo-${idx}`} style={{ pointerEvents: 'none' }}>
-                      <rect x={c.x - 10} y={posY - 7} width="20" height="9" fill="white" fillOpacity="0.85" rx="2" />
-                      <text x={c.x} y={posY} fontSize="7.5" fill="blue" fontWeight="bold" textAnchor="middle">T-{numeroTramo}</text>
-                    </g>
-                  );
-                })}
-
-                {/* 3. Nodos de inicio/fin: Líneas negras punteadas largas y Etiquetas */}
-                {nodosUnicos.map((nodo, idx) => {
-                  const numeroNodo = invertirTramos ? (totalNodos - idx) : (idx + 1);
-                  const yFinalLinea = nodo.y + 40; 
-                  return (
-                    <g key={`v4-nodo-${idx}`} style={{ pointerEvents: 'none' }}>
-                      <line x1={nodo.x} y1={nodo.y} x2={nodo.x} y2={yFinalLinea} stroke="black" strokeWidth="1" strokeDasharray="3,3" />
-                      <rect x={nodo.x - 7} y={yFinalLinea} width="14" height="20" fill="white" fillOpacity="0.85" rx="2" />
-                      <text x={nodo.x} y={yFinalLinea + 8} fontSize="9.5" fill="black" fontWeight="bold" textAnchor="middle">{letraEje}</text>
-                      <text x={nodo.x} y={yFinalLinea + 18} fontSize="9.5" fill="black" fontWeight="bold" textAnchor="middle">{numeroNodo}</text>
-                    </g>
-                  );
-                })}
-
-                {/* 4. Indicadores de columnas (Vigas) */}
-                {columnasCalculadas.map((col) => (
-                  <g key={`v4-col-${col.id}`}>
-                    <text x={col.x} y={20} fontSize="12" fontWeight="bold" textAnchor="middle" style={{ pointerEvents: 'none' }}>{col.numero}</text>
-                  </g>
-                ))}
-              </svg>
-
-              {/* 5. LEYENDA VISTA 4 - Con margen negativo para subirla y que quepa en la hoja */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 0 6px 15px', marginTop: '-15px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: 'blue', fontWeight: 'bold', fontSize: '11.5px' }}>T - 1</span>
-                  <span style={{ color: 'blue', fontWeight: 'bold', fontSize: '11.5px' }}>Número del tramo de canal</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'black', fontWeight: 'bold', fontSize: '11.5px', lineHeight: '1' }}>
-                    <span>{letraEje}</span>
-                    <span>1</span>
-                  </div>
-                  <span style={{ color: 'black', fontWeight: 'bold', fontSize: '11.5px' }}>Identificación del inicio y final de cada tramo de Canal</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
+          
         </div>
       </div>
 
