@@ -266,7 +266,7 @@ const CorteLateralCanal = ({
       {/* ----------------------------------------------------- */}
       {/* VISTA 2: TABLA LONGITUDINAL PROPORCIONAL              */}
       {/* ----------------------------------------------------- */}
-      <div style={{ width: '100%', backgroundColor: '#fdfdfd', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px', marginBottom: '6px' }}>
+      <div style={{ width: '100%', overflowX: 'auto' }}>
         <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
           Corte superior ancho paredes canal
         </span>
@@ -335,8 +335,8 @@ const CorteLateralCanal = ({
       {/* ----------------------------------------------------- */}
       {/* VISTA 3: PERFIL GEOMÉTRICO                            */}
       {/* ----------------------------------------------------- */}
-      <div style={{ width: '100%', backgroundColor: '#fafafa', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '2px', textTransform: 'uppercase' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px 0', minHeight: '150px' }}>
+        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '1px', textTransform: 'uppercase' }}>
           Forma del Perfil de Doblez de la Canal (Plantilla Base)
         </span>
         
