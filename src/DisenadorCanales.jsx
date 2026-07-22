@@ -584,7 +584,7 @@ const DisenadorCanales = () => {
           </div>
           <button onClick={duplicarEstructuraViga1} style={{ ...btnStyle, width: '100%', marginTop: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '9px', fontWeight: 'bold' }}>📋 Copiar Diseño Viga 1 a Todas</button>
           <button onClick={() => setInvertirNumeracion(!invertirNumeracion)} style={{ ...btnStyle, width: '100%', marginTop: '4px', fontSize: '9px' }}>🔄 Voltear Sentido Numérico</button>
-          <button onClick={() => setInvertirTramos(!invertirTramos)} style={{ ...btnStyle, width: '100%', marginTop: '4px', fontSize: '9px' }}>🔄 Voltear Tramos (T-1, T-2...)</button>
+          
         </div>
 
         <div style={{ ...cardStyle, backgroundColor: '#f1f5f9', border: '1px solid #1e293b' }}>
@@ -664,7 +664,12 @@ const DisenadorCanales = () => {
               <input type="number" style={{ ...inputMiniStyle, flex: 1 }} value={nuevoAngulo} placeholder="Ang (°)" onChange={e => setNuevoAngulo(e.target.value)} />
               <input type="number" style={{ ...inputMiniStyle, flex: 1 }} value={nuevoLongitud} placeholder="L (mm)" onChange={e => setNuevoLongitud(e.target.value)} />
             </div>
+
+            
             <button onClick={agregarPliegue} style={{ ...btnStyle, backgroundColor: '#f39c12', color: '#fff', border: 'none' }}>➕ Añadir</button>
+
+            {/* === BOTÓN MOVIDO AQUÍ === */}
+            <button onClick={() => setInvertirTramos(!invertirTramos)} style={{ ...btnStyle, width: '100%', marginTop: '2px', marginBottom: '2px', fontSize: '9.5px', fontWeight: 'bold', backgroundColor: '#e2e8f0', color: '#1e293b' }}>🔄 Voltear Tramos (T-1, T-2...)</button>
           </div>
         </div>
       </div>
