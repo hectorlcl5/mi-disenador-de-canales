@@ -128,7 +128,7 @@ const DisenadorRemates = () => {
         
         {/* LOGO INSERTO EN LA PARTE SUPERIOR IZQUIERDA DEL PANEL */}
         <div style={{ display: 'flex', justifyContent: 'left', marginBottom: '15px' }}>
-          <img src={logoCortiza} alt="Logo Cortiza" style={{ maxWidth: '100px', height: 'auto' }} />
+          <img src={logoCortiza} alt="Logo Cortiza" style={{ maxWidth: '70px', height: 'auto' }} />
         </div>
 
         {/* CONTENEDOR DE BOTONES Y NOMBRE DE ARCHIVO */}
@@ -225,8 +225,8 @@ const DisenadorRemates = () => {
         
         {/* ENCABEZADO DE IMPRESIÓN MODERNO CON EL LOGO INCLUIDO EN EL PDF */}
         <div className="print-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '3px solid #f39c12', paddingBottom: '15px' }}>
-          <img src={logoCortiza} alt="Logo Cortiza Impresión" style={{ maxWidth: '100px', height: 'auto' }} />
-          <h1 style={{ margin: 0, color: '#f39c12', textTransform: 'uppercase', fontSize: '24px', textAlign: 'right', flex: 1, marginLeft: '20px' }}>
+          <img src={logoCortiza} alt="Logo Cortiza Impresión" style={{ maxWidth: '70px', height: 'auto' }} />
+          <h1 style={{ margin: 0, color: '#f39c12', textTransform: 'uppercase', fontSize: '20px', textAlign: 'right', flex: 1, marginLeft: '20px' }}>
             {tituloHoja}
           </h1>
         </div>

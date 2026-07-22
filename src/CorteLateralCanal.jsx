@@ -296,7 +296,7 @@ const CorteLateralCanal = ({
   // RENDERIZADO DEL COMPONENTE
   // ==========================================
   return (
-    <div style={{ marginTop: '2px', borderTop: '1px dashed #cbd5e1', paddingTop: '5px' }}>
+    <div style={{ marginTop: '2px', borderTop: '1px dashed #cbd5e1', paddingTop: '5px', backgroundColor: '#ffffff', minWidth: 'max-content', paddingBottom: '20px' }}>
       
       {/* ----------------------------------------------------- */}
       {/* VISTA 2: TABLA LONGITUDINAL PROPORCIONAL              */}
@@ -306,7 +306,7 @@ const CorteLateralCanal = ({
           Corte superior ancho paredes canal
         </span>
         
-        <svg width="100%" height={Math.max(90, altoTotalTabla + 35)} viewBox={`0 0 1000 ${Math.max(90, altoTotalTabla + 35)}`} style={{ background: '#fff', display: 'block' }}>
+        <svg width="100%" height={Math.max(90, altoTotalTabla + 35)} viewBox={`0 0 1000 ${Math.max(90, altoTotalTabla + 35)}`} style={{ background: 'transparent', display: 'block' }}>
           
           <defs>
             <marker id="arrowheadRed" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
@@ -370,22 +370,30 @@ const CorteLateralCanal = ({
       {/* ----------------------------------------------------- */}
       {/* VISTA 3: PERFIL GEOMÉTRICO                            */}
       {/* ----------------------------------------------------- */}
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px 0', minHeight: '150px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '1px', textTransform: 'uppercase' }}>
-          Forma del Perfil de Doblez de la Canal (Plantilla Base)
-        </span>
+      
+      {/* 1. Cambiamos flexDirection a 'column' para que el título quede arriba y alignItems a 'flex-start' para alinearlo a la izquierda */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '10px 0', minHeight: '150px', width: '100%' }}>
         
-        {/* VIEWBOX con altura de 350 para proteger márgenes inferiores de textos */}
-        <svg width="100%" height="160px" viewBox="0 0 1000 350" style={{ background: '#fff', border: '1px solid #f1f5f9', display: 'block' }}>
+        {/* 2. Ajustamos el título (le quité el marginBottom exagerado y subí un poco la fuente para que coincida con la Vista 4) */}
+        <h3 style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e293b', display: 'block', marginBottom: '15px', textTransform: 'uppercase' }}>
+          Forma del Perfil de Doblez de la Canal (Plantilla Base)
+        </h3>
+        
+        {/* 3. Envolvemos el SVG en un div centrado para que el dibujo quede en medio, pero el título se mantenga a la izquierda */}
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
           
-          <defs>
-            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-              <polygon points="0 0, 8 4, 0 8" fill="#7f8c8d" />
-            </marker>
-            <marker id="arrowheadBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-              <polygon points="0 0, 8 4, 0 8" fill="#2563eb" />
-            </marker>
-          </defs>
+          {/* VIEWBOX con altura de 330. 
+              CAMBIOS CLAVE: width a "100%", background a "transparent" y border "none" para eliminar el cuadro blanco */}
+          <svg width="100%" height="160px" viewBox="0 0 1000 325" style={{ background: 'transparent', border: 'none', display: 'block', maxWidth: '1000px' }}>
+            
+            <defs>
+              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                <polygon points="0 0, 8 4, 0 8" fill="#7f8c8d" />
+              </marker>
+              <marker id="arrowheadBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                <polygon points="0 0, 8 4, 0 8" fill="#2563eb" />
+              </marker>
+            </defs>
 
           <path d={pathData} fill="none" stroke="#1e293b" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
 
@@ -407,12 +415,13 @@ const CorteLateralCanal = ({
             (Canal en desarrollo {desarrolloExacto} mm)
           </text>
         </svg>
+        </div>
       </div>
 
       {/* ========================================== */}
       {/* VISTA 4: IDENTIFICACIÓN DE TRAMOS          */}
       {/* ========================================== */}
-      <div style={{ marginTop: '2px', paddingTop: '4px', width: '100%', position: 'relative' }}>
+      <div style={{ marginTop: '1px', paddingTop: '1px', width: '100%', background: 'transparent', position: 'relative' }}>
         <h3 style={{ fontSize: '11px', color: '#1e293b', margin: '0 0 2px 0', fontWeight: 'bold', textTransform: 'uppercase' }}>IDENTIFICACIÓN DE TRAMOS DE CANAL PARA LA INSTALACIÓN</h3>
         <div style={{ width: '100%', position: 'relative' }}>
           
@@ -436,7 +445,7 @@ const CorteLateralCanal = ({
               return (
                 <g key={`v4-tramo-${idx}`} style={{ pointerEvents: 'none' }}>
                   <rect x={c.x - 10} y={posY - 7} width="20" height="9" fill="white" fillOpacity="0.85" rx="2" />
-                  <text x={c.x} y={posY} fontSize="7.5" fill="blue" fontWeight="bold" textAnchor="middle">T-{numeroTramo}</text>
+                  <text x={c.x} y={posY} fontSize="8.5" fill="blue" fontWeight="bold" textAnchor="middle">T-{numeroTramo}</text>
                 </g>
               );
             })}

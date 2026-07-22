@@ -409,7 +409,7 @@ const DisenadorCanales = () => {
       const listaT = config.listaTraslapos || [];
       puntosEstructura[col.id] = { xCol: col.x, yInicioColumna: yActual, lineas: [], cotas: [], soscosSVG: [], ejesTraslapos: [] };
 
-      const renderizarSoscosLocal = (x, y) => {
+      const renderizarSoscosIndependientes = (y) => {
         const soscos = [];
         const altoSosco = 13; const anchoSosco = 7;
         const diam = config.diametroSosco || '4"';
@@ -423,27 +423,36 @@ const DisenadorCanales = () => {
           </g>
         );
 
-        if (config.soscoCentro) soscos.push(crearAux(x, 'c'));
-        if (config.soscoIzquierdo) soscos.push(crearAux(x - anchoFijoPlana / 2, 'i'));
-        if (config.soscoDerecho) soscos.push(crearAux(x + anchoFijoPlana / 2, 'd'));
-        if (config.dosSoscos) { soscos.push(crearAux(x - anchoFijoPlana / 2, 'di')); soscos.push(crearAux(x + anchoFijoPlana / 2, 'dd')); }
+        // Calculamos posiciones exactas: si hay plana se centra ahí, si no, se pega a la viga (desfase de 12px)
+        const xCentro = col.x;
+        const xIzq = parseFloat(config.planaIzquierda) > 0 ? col.x - (anchoFijoPlana / 2) : col.x - 12;
+        const xDer = parseFloat(config.planaDerecha) > 0 ? col.x + (anchoFijoPlana / 2) : col.x + 12;
+
+        if (config.soscoCentro) soscos.push(crearAux(xCentro, 'c'));
+        if (config.soscoIzquierdo) soscos.push(crearAux(xIzq, 'i'));
+        if (config.soscoDerecho) soscos.push(crearAux(xDer, 'd'));
+        if (config.dosSoscos) { 
+          soscos.push(crearAux(xIzq, 'di')); 
+          soscos.push(crearAux(xDer, 'dd')); 
+        }
         return soscos;
       };
 
+      // Empujamos los soscos a la viga SIEMPRE (haya o no haya partes planas)
+      puntosEstructura[col.id].soscosSVG.push(...renderizarSoscosIndependientes(yActual));
+
+      // Mantenemos el dibujo de las partes planas, pero SIN el push de los soscos adentro
       if (parseFloat(config.planaIzquierda) > 0) {
         puntosEstructura[col.id].lineas.push({ x1: col.x - anchoFijoPlana, y1: yActual, x2: col.x, y2: yActual, color: "blue", width: 2 });
         puntosEstructura[col.id].cotas.push({ x: col.x - anchoFijoPlana / 2, y: yActual + 28, texto: config.planaIzquierda });
-        puntosEstructura[col.id].soscosSVG.push(...renderizarSoscosLocal(col.x - anchoFijoPlana / 2, yActual));
       }
       if (parseFloat(config.planaCentro) > 0) {
         puntosEstructura[col.id].lineas.push({ x1: col.x - anchoFijoPlana / 2, y1: yActual, x2: col.x + anchoFijoPlana / 2, y2: yActual, color: "blue", width: 2 });
         puntosEstructura[col.id].cotas.push({ x: col.x, y: yActual + 28, texto: config.planaCentro });
-        puntosEstructura[col.id].soscosSVG.push(...renderizarSoscosLocal(col.x, yActual));
       }
       if (parseFloat(config.planaDerecha) > 0) {
         puntosEstructura[col.id].lineas.push({ x1: col.x, y1: yActual, x2: col.x + anchoFijoPlana, y2: yActual, color: "blue", width: 2 });
         puntosEstructura[col.id].cotas.push({ x: col.x + anchoFijoPlana / 2, y: yActual + 28, texto: config.planaDerecha });
-        puntosEstructura[col.id].soscosSVG.push(...renderizarSoscosLocal(col.x + anchoFijoPlana / 2, yActual));
       }
 
       if (index < columnasCalculadas.length - 1) {
@@ -542,7 +551,7 @@ const DisenadorCanales = () => {
       {/* ============================================================== */}
       {/* 🎛️ PANEL IZQUIERDO (CON SCROLL INDEPENDIENTE)                    */}
       {/* ============================================================== */}
-      <div className="sidebar no-print" style={{ width: '215px', minWidth: '215px', height: '100%', backgroundColor: '#fff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '10px', boxSizing: 'border-box' }}>
+      <div className="sidebar no-print" style={{ width: '215px', minWidth: '215px', height: '100%', backgroundColor: '#ffff', borderRight: '2px solid #cbd5e1', overflowY: 'auto', padding: '10px', boxSizing: 'border-box' }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
           {/* Fila 1: Nuevo, Abrir, Guardar */}
@@ -678,7 +687,7 @@ const DisenadorCanales = () => {
       {/* 📄 PANEL DERECHO (CON SCROLL INDEPENDIENTE)                    */}
       {/* ============================================================== */}
       <div className="right-panel" style={{ flex: 1, padding: '5px', overflowY: 'auto', height: '100%', display: 'flex', justifyContent: 'center' }}>
-        <div className="carta-contenedor" style={{ width: '100%', maxWidth: '1000px', background: '#fff', padding: '5px 12px', boxSizing: 'border-box', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+        <div className="carta-contenedor" style={{ width: '100%', maxWidth: '1000px', backgroundColor: '#ffffff', padding: '5px 12px', boxSizing: 'border-box', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f39c12', paddingBottom: '2px', marginBottom: '2px' }}>
             <img src={logoCortiza} alt="Cortiza" style={{ width: '70px', objectFit: 'contain' }} />
