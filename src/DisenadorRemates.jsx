@@ -8,7 +8,7 @@ const DisenadorRemates = () => {
   const [showModal, setShowModal] = useState(false);
   const [projectId, setProjectId] = useState(null);
   const [nombreArchivo, setNombreArchivo] = useState("Diseño_001");
-  const [tituloHoja, setTituloHoja] = useState("DISEÑO DE REMATES Y CANALES");
+  const [tituloHoja, setTituloHoja] = useState("DISEÑO DE REMATES");
   const [remates, setRemates] = useState([{
     id: Date.now(),
     titulo: "Remate Principal",
