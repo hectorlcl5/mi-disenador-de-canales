@@ -245,7 +245,7 @@ const CorteLateralCanal = ({
           <text
             x={intStrX - nx * 15}
             y={intStrY - ny * 15 + 6}
-            fontSize="17"
+            fontSize="18"
             fill="#475569"
             fontWeight="bold"
             textAnchor="middle"
@@ -265,7 +265,7 @@ const CorteLateralCanal = ({
           <text
             x={extStrX + 10}
             y={extStrY + 14}
-            fontSize="17"
+            fontSize="18"
             fill="#475569"
             fontWeight="bold"
             textAnchor="start"
@@ -917,14 +917,14 @@ const CorteLateralCanal = ({
 
             {tramosVista4.map((c, idx) => {
               const numeroTramo = invertirTramos ? totalTramos - idx : idx + 1;
-              const posY = c.y - 12;
+              const posY = c.y - 14;
               return (
                 <g key={`v4-tramo-${idx}`} style={{ pointerEvents: "none" }}>
                   <rect
                     x={c.x - 10}
                     y={posY - 7}
-                    width="20"
-                    height="9"
+                    width="30"
+                    height="12"
                     fill="white"
                     fillOpacity="0.85"
                     rx="2"
@@ -932,7 +932,7 @@ const CorteLateralCanal = ({
                   <text
                     x={c.x}
                     y={posY}
-                    fontSize="8.5"
+                    fontSize="10.5"
                     fill="blue"
                     fontWeight="bold"
                     textAnchor="middle"
