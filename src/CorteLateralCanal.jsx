@@ -244,8 +244,8 @@ const CorteLateralCanal = ({
           />
           <text
             x={intStrX - nx * 15}
-            y={intStrY - ny * 15 + 4}
-            fontSize="13"
+            y={intStrY - ny * 15 + 6}
+            fontSize="17"
             fill="#475569"
             fontWeight="bold"
             textAnchor="middle"
@@ -264,8 +264,8 @@ const CorteLateralCanal = ({
           />
           <text
             x={extStrX + 10}
-            y={extStrY + 12}
-            fontSize="13"
+            y={extStrY + 14}
+            fontSize="17"
             fill="#475569"
             fontWeight="bold"
             textAnchor="start"
@@ -370,8 +370,8 @@ const CorteLateralCanal = ({
               />
               <text
                 x={pDerFondo.x - 20}
-                y={pDerFondo.y - 85}
-                fontSize="14"
+                y={pDerFondo.y - 90}
+                fontSize="18"
                 fill="#475569"
                 textAnchor="middle"
               >
@@ -379,8 +379,8 @@ const CorteLateralCanal = ({
               </text>
               <text
                 x={pDerFondo.x - 20}
-                y={pDerFondo.y - 73}
-                fontSize="14"
+                y={pDerFondo.y - 72}
+                fontSize="18"
                 fill="#475569"
                 textAnchor="middle"
               >
@@ -393,14 +393,14 @@ const CorteLateralCanal = ({
               <path
                 d={`M ${pIzqFondo.x} ${pIzqFondo.y - 14} L ${pIzqFondo.x + 14} ${pIzqFondo.y - 14} L ${pIzqFondo.x + 14} ${pIzqFondo.y}`}
                 fill="none"
-                stroke="#2563eb"
+                stroke="#0541c2"
                 strokeWidth="1.5"
               />
               <text
-                x={pIzqFondo.x + 22}
-                y={pIzqFondo.y - 16}
-                fontSize="14"
-                fill="#2563eb"
+                x={pIzqFondo.x + 24}
+                y={pIzqFondo.y - 18}
+                fontSize="18"
+                fill="#0541c2"
                 fontWeight="bold"
               >
                 90°
@@ -421,8 +421,8 @@ const CorteLateralCanal = ({
               />
               <text
                 x={pIzqFondo.x + 20}
-                y={pIzqFondo.y - 85}
-                fontSize="14"
+                y={pIzqFondo.y - 90}
+                fontSize="18"
                 fill="#475569"
                 textAnchor="middle"
               >
@@ -430,8 +430,8 @@ const CorteLateralCanal = ({
               </text>
               <text
                 x={pIzqFondo.x + 20}
-                y={pIzqFondo.y - 73}
-                fontSize="14"
+                y={pIzqFondo.y - 72}
+                fontSize="18"
                 fill="#475569"
                 textAnchor="middle"
               >
@@ -444,14 +444,14 @@ const CorteLateralCanal = ({
               <path
                 d={`M ${pDerFondo.x} ${pDerFondo.y - 14} L ${pDerFondo.x - 14} ${pDerFondo.y - 14} L ${pDerFondo.x - 14} ${pDerFondo.y}`}
                 fill="none"
-                stroke="#2563eb"
+                stroke="#0541c2"
                 strokeWidth="1.5"
               />
               <text
-                x={pDerFondo.x - 22}
-                y={pDerFondo.y - 16}
-                fontSize="14"
-                fill="#2563eb"
+                x={pDerFondo.x - 24}
+                y={pDerFondo.y - 18}
+                fontSize="18"
+                fill="#0541c2"
                 fontWeight="bold"
               >
                 90°
@@ -836,7 +836,7 @@ const CorteLateralCanal = ({
             <text
               x={maxXOffset + 180}
               y="150"
-              fontSize="24"
+              fontSize="30"
               fill="#475569"
               fontWeight="bold"
               textAnchor="start"
