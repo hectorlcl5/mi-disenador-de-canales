@@ -685,73 +685,53 @@ const DisenadorRemates = () => {
                 </button>
               </div>
             ))}
-            <button
-              onClick={() => {
-                const n = [...remates];
-                n[rIdx].tramos.push({ longitud: 100, angulo: 0 });
-                setRemates(n);
-              }}
-              style={{
-                fontSize: "11px",
-                color: "#2563eb",
-                background: "none",
-                border: "1px solid #2563eb",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                marginBottom: "10px",
-              }}
-            >
-              <div
-                style={{ display: "flex", gap: "5px", marginBottom: "10px" }}
+            <div style={{ display: "flex", gap: "5px", marginBottom: "15px" }}>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  const n = [...remates];
+                  n[rIdx] = { ...n[rIdx], tramos: [...n[rIdx].tramos] };
+                  n[rIdx].tramos.unshift({ longitud: 100, angulo: 0 });
+                  setRemates(n);
+                }}
+                style={{
+                  fontSize: "11px",
+                  color: "#2563eb",
+                  background: "#eff6ff",
+                  border: "1px solid #2563eb",
+                  padding: "6px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  flex: 1,
+                  fontWeight: "bold",
+                }}
               >
-                <button
-                  onClick={() => {
-                    const n = [...remates];
-                    // 💡 COPIA SEGURA: Evita que React duplique la acción
-                    n[rIdx] = { ...n[rIdx], tramos: [...n[rIdx].tramos] };
-                    n[rIdx].tramos.unshift({ longitud: 100, angulo: 0 });
-                    setRemates(n);
-                  }}
-                  style={{
-                    fontSize: "10px",
-                    color: "#2563eb",
-                    background: "#eff6ff",
-                    border: "1px solid #2563eb",
-                    padding: "6px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    flex: 1,
-                    fontWeight: "bold",
-                  }}
-                >
-                  ⬆️ + Añadir al Inicio
-                </button>
+                ⬆️ + Añadir al Inicio
+              </button>
 
-                <button
-                  onClick={() => {
-                    const n = [...remates];
-                    // 💡 COPIA SEGURA: Evita que React duplique la acción
-                    n[rIdx] = { ...n[rIdx], tramos: [...n[rIdx].tramos] };
-                    n[rIdx].tramos.push({ longitud: 100, angulo: 0 });
-                    setRemates(n);
-                  }}
-                  style={{
-                    fontSize: "10px",
-                    color: "#2563eb",
-                    background: "#eff6ff",
-                    border: "1px solid #2563eb",
-                    padding: "6px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    flex: 1,
-                    fontWeight: "bold",
-                  }}
-                >
-                  ⬇️ + Añadir al Final
-                </button>
-              </div>
-            </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  const n = [...remates];
+                  n[rIdx] = { ...n[rIdx], tramos: [...n[rIdx].tramos] };
+                  n[rIdx].tramos.push({ longitud: 100, angulo: 0 });
+                  setRemates(n);
+                }}
+                style={{
+                  fontSize: "11px",
+                  color: "#2563eb",
+                  background: "#eff6ff",
+                  border: "1px solid #2563eb",
+                  padding: "6px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  flex: 1,
+                  fontWeight: "bold",
+                }}
+              >
+                ⬇️ + Añadir al Final
+              </button>
+            </div>
 
             <p style={labelStyle}>DATOS DE FICHA TÉCNICA:</p>
             {r.caracteristicas.map((c, cIdx) => (
