@@ -834,12 +834,12 @@ const CorteLateralCanal = ({
             {angulo90Svg}
 
             <text
-              x={maxXOffset + 180}
-              y="150"
-              fontSize="30"
+              x={1420}
+              y="130"
+              fontSize="25"
               fill="#475569"
               fontWeight="bold"
-              textAnchor="start"
+              textAnchor="end"
             >
               (Canal en desarrollo {desarrolloExacto} mm)
             </text>

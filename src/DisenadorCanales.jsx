@@ -2001,10 +2001,10 @@ const DisenadorCanales = () => {
                           X
                         </text>
                         <rect
-                          x={eje.x - 20}
-                          y={eje.clickY - 20}
-                          width="40"
-                          height="40"
+                          x={eje.x - 25}
+                          y={eje.clickY - 25}
+                          width="50"
+                          height="50"
                           fill="transparent"
                           style={{ cursor: "context-menu" }}
                           onContextMenu={(e) =>
@@ -2078,9 +2078,9 @@ const DisenadorCanales = () => {
                         strokeWidth="1.5"
                       />
                       <rect
-                        x={col.x - 30}
+                        x={col.x - 15}
                         y={0}
-                        width="60"
+                        width="30"
                         height="150"
                         fill="transparent"
                         style={{ cursor: "context-menu" }}
@@ -2110,9 +2110,9 @@ const DisenadorCanales = () => {
                         style={{ pointerEvents: "none" }}
                       />
                       <rect
-                        x={col.x - 30}
+                        x={col.x - 15}
                         y={0}
-                        width="60"
+                        width="30"
                         height="150"
                         fill="transparent"
                         style={{ cursor: "context-menu" }}
