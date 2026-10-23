@@ -270,7 +270,6 @@ const DisenadorRemates = () => {
     }
   };
 
-  // 👇 AQUÍ FALTABA EL RETURN Y EL DIV PRINCIPAL 👇
   return (
     <div
       className="main-container"
@@ -289,7 +288,7 @@ const DisenadorRemates = () => {
           .print-header { display: flex !important; margin-bottom: 10px !important; padding-bottom: 10px !important; } 
           
           /* 💡 PUNTO 4: justify-content: flex-start apila los remates en la parte superior. 
-             Un gap de 15px nos asegura que quepan 6 holgadamente en la hoja carta. */
+              Un gap de 15px nos asegura que quepan 6 holgadamente en la hoja carta. */
           .remates-wrapper { flex: 1 !important; display: flex !important; flex-direction: column !important; justify-content: flex-start !important; gap: 15px !important; }
           
           .remate-item { border-bottom: none !important; padding-bottom: 10px !important; margin-bottom: 0 !important; page-break-inside: avoid !important; }
@@ -939,7 +938,7 @@ const DisenadorRemates = () => {
                   style={itemProyectoStyle}
                 >
                   <strong>{p.nombre_proyecto}</strong>
-                  <small style={{ color: "#999" }}>
+                  <small style={{ color: "#999", display: "block" }}>
                     {new Date(p.ultima_actualizacion).toLocaleString()}
                   </small>
                 </div>
@@ -1014,17 +1013,24 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
   const rawW = maxX - minX || 1;
   const rawH = maxY - minY || 1;
 
-  const targetW = 400;
-  const targetH = 180;
+  // Mantenemos el tamaño objetivo grande del remate
+  const targetW = 440;
+  const targetH = 200;
 
   let scale = Math.min(targetW / rawW, targetH / rawH);
-  if (scale > 2.5) scale = 2.5;
+  if (scale > 3.0) scale = 3.0; // Permitir un acercamiento mayor
 
   const scaledW = rawW * scale;
   const scaledH = rawH * scale;
 
-  const offsetX = (500 - scaledW) / 2 - minX * scale;
-  const offsetY = (240 - scaledH) / 2 - minY * scale;
+  // 💡 CAMBIO 1: Aumentamos el lienzo virtual a 580x300 (antes 500x240)
+  // Esto crea un margen de seguridad amplio alrededor de la figura 
+  // para que las cotas y ángulos no choquen con el techo ni los bordes.
+  const canvasW = 640;
+  const canvasH = 340;
+
+  const offsetX = (canvasW - scaledW) / 2 - minX * scale;
+  const offsetY = (canvasH - scaledH) / 2 - minY * scale;
 
   // PASADA 3: Aplicar escala y guardar datos para renderizar
   let pathData = "";
@@ -1055,35 +1061,44 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
   // Generar etiquetas de medidas (Cotas Rojas)
   lineasProcesadas.forEach((linea, i) => {
     const normalAng = linea.anguloRad + Math.PI / 2;
-    let offsetCota = -16;
-    if (i === indiceTramoLargo && caraColor === "exterior") offsetCota = 16;
-    const mx = linea.midX + Math.cos(normalAng) * offsetCota;
-    const my = linea.midY + Math.sin(normalAng) * offsetCota;
+    let offsetCota = -15; // Distancia base prudente (más cerca de la línea)
+    if (i === indiceTramoLargo && caraColor === "exterior") offsetCota = 15;
+
+    // 💡 CAMBIO 2: Si el segmento es corto, lo desplazamos PARALELAMENTE a la línea
+    // en lugar de alejarlo hacia afuera. Así no se pierde a qué tramo pertenece.
+    const lenVisual = linea.longitud * scale;
+    let shiftX = 0;
+    let shiftY = 0;
+
+    if (lenVisual < 35) {
+      const moveParallel = i % 2 === 0 ? -12 : 12; // Unos hacia un lado, otros hacia el otro
+      shiftX = Math.cos(linea.anguloRad) * moveParallel;
+      shiftY = Math.sin(linea.anguloRad) * moveParallel;
+      offsetCota += (offsetCota < 0 ? -5 : 5); // Un levísimo empujón extra hacia afuera (5px)
+    }
+
+    const mx = linea.midX + Math.cos(normalAng) * offsetCota + shiftX;
+    const my = linea.midY + Math.sin(normalAng) * offsetCota + shiftY;
     etiquetas.push({ mx, my, val: linea.longitud });
   });
 
-  // Calcular ángulos internos y aplicar LÓGICA ANTICOLISIONES
+  // Calcular ángulos internos y aplicar LÓGICA ANTICOLISIONES (Ángulos azules)
   for (let i = 0; i < lineasProcesadas.length - 1; i++) {
     const l1 = lineasProcesadas[i];
     const l2 = lineasProcesadas[i + 1];
 
-    // 💡 NUEVO: Si alguna de las líneas es un grafado (<= 1mm), NO dibujamos el ángulo
     if (l1.longitud <= 2 || l2.longitud <= 2) continue;
 
-    const vx = l1.x2,
-      vy = l1.y2;
-    const v1x = -Math.cos(l1.anguloRad),
-      v1y = -Math.sin(l1.anguloRad);
-    const v2x = Math.cos(l2.anguloRad),
-      v2y = Math.sin(l2.anguloRad);
+    const vx = l1.x2, vy = l1.y2;
+    const v1x = -Math.cos(l1.anguloRad), v1y = -Math.sin(l1.anguloRad);
+    const v2x = Math.cos(l2.anguloRad), v2y = Math.sin(l2.anguloRad);
 
     const dot = v1x * v2x + v1y * v2y;
     const cross = v1x * v2y - v1y * v2x;
     const innerRad = Math.acos(Math.max(-1, Math.min(1, dot)));
     const innerDeg = Math.round((innerRad * 180) / Math.PI);
 
-    let bx = v1x + v2x,
-      by = v1y + v2y;
+    let bx = v1x + v2x, by = v1y + v2y;
     const bLen = Math.sqrt(bx * bx + by * by);
     if (bLen > 0.001) {
       bx /= bLen;
@@ -1107,9 +1122,7 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
     const minDistSeguridad = 28;
 
     etiquetas.forEach((etq) => {
-      if (Math.hypot(tx - etq.mx, ty - etq.my) < minDistSeguridad) {
-        overlap = true;
-      }
+      if (Math.hypot(tx - etq.mx, ty - etq.my) < minDistSeguridad) overlap = true;
     });
 
     if (overlap) {
@@ -1128,64 +1141,56 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
       };
     }
 
-    const ax1 = vx + v1x * rArc,
-      ay1 = vy + v1y * rArc;
-    const ax2 = vx + v2x * rArc,
-      ay2 = vy + v2y * rArc;
+    const ax1 = vx + v1x * rArc, ay1 = vy + v1y * rArc;
+    const ax2 = vx + v2x * rArc, ay2 = vy + v2y * rArc;
     const sweepFlag = cross > 0 ? 1 : 0;
 
     ty += 4;
 
     intersecciones.push({
-      vx,
-      vy,
-      ax1,
-      ay1,
-      ax2,
-      ay2,
-      rArc,
-      sweepFlag,
-      tx,
-      ty,
-      innerDeg,
-      leader,
+      vx, vy, ax1, ay1, ax2, ay2, rArc, sweepFlag, tx, ty, innerDeg, leader,
     });
   }
 
+  // 💡 CAMBIO 3: Acercamos la flecha y el texto al remate para que queden dentro del lienzo
   let flechaG = null;
-  if (
-    lineasProcesadas.length > 0 &&
-    indiceTramoLargo < lineasProcesadas.length
-  ) {
+  if (lineasProcesadas.length > 0 && indiceTramoLargo < lineasProcesadas.length) {
     const tLargo = lineasProcesadas[indiceTramoLargo];
     const pAng = tLargo.anguloRad + Math.PI / 2;
     const factorDir = caraColor === "exterior" ? -1 : 1;
-    const fX1 = tLargo.midX + Math.cos(pAng) * (38 * factorDir);
-    const fY1 = tLargo.midY + Math.sin(pAng) * (38 * factorDir);
-    const fX2 = tLargo.midX + Math.cos(pAng) * (10 * factorDir);
-    const fY2 = tLargo.midY + Math.sin(pAng) * (10 * factorDir);
-    const tX = tLargo.midX + Math.cos(pAng) * (52 * factorDir);
-    const tY = tLargo.midY + Math.sin(pAng) * (52 * factorDir) + 4;
+    
+    const distBaseFlecha = 32; // Antes 45, flecha más corta
+    const fX1 = tLargo.midX + Math.cos(pAng) * (distBaseFlecha * factorDir);
+    const fY1 = tLargo.midY + Math.sin(pAng) * (distBaseFlecha * factorDir);
+    const fX2 = tLargo.midX + Math.cos(pAng) * (8 * factorDir); // Punta casi tocando la chapa
+    const fY2 = tLargo.midY + Math.sin(pAng) * (8 * factorDir);
+    
+    const distTexto = 42; // Antes 55, el texto estará bien sujeto a la flecha
+    let tX = tLargo.midX + Math.cos(pAng) * (distTexto * factorDir);
+    let tY = tLargo.midY + Math.sin(pAng) * (distTexto * factorDir) + 4;
+
+    // Calcular dirección horizontal para alinear inteligentemente el texto
+    const dirX = Math.cos(pAng) * factorDir;
+    let anchor = "middle";
+    
+    if (dirX > 0.2) {
+      anchor = "start";
+      tX += 3;
+    } else if (dirX < -0.2) {
+      anchor = "end";
+      tX -= 3;
+    }
 
     if (caraColor !== "ninguna") {
       flechaG = (
         <g>
           <line
-            x1={fX1}
-            y1={fY1}
-            x2={fX2}
-            y2={fY2}
-            stroke="#7f8c8d"
-            strokeWidth="2"
-            markerEnd="url(#arrow)"
+            x1={fX1} y1={fY1} x2={fX2} y2={fY2}
+            stroke="#7f8c8d" strokeWidth="2" markerEnd="url(#arrow)"
           />
           <text
-            x={tX}
-            y={tY}
-            fontSize="15"
-            fill="#4f5d73"
-            fontWeight="bold"
-            textAnchor="middle"
+            x={tX} y={tY}
+            fontSize="14" fill="#4f5d73" fontWeight="bold" textAnchor={anchor}
           >
             {nombreColor}
           </text>
@@ -1195,38 +1200,23 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
   }
 
   return (
+    // Se elimina el maxHeight estricto para que la etiqueta "auto" permita el crecimiento vertical libre
     <svg
       width="100%"
-      height="150"
-      viewBox="0 0 500 240"
+      height="auto"
+      viewBox="0 0 640 340" // 💡 CAMBIO 4: Refleja el nuevo canvasW y canvasH
       style={{
         backgroundColor: "#fafafa",
         borderRadius: "6px",
-        maxHeight: "150px",
+        minHeight: "220px",
         overflow: "visible",
       }}
     >
       <defs>
-        <marker
-          id="arrow"
-          viewBox="0 0 10 10"
-          refX="5"
-          refY="5"
-          markerWidth="6"
-          markerHeight="6"
-          orient="auto-start-reverse"
-        >
+        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8c8d" />
         </marker>
-        <marker
-          id="arrowBlue"
-          viewBox="0 0 10 10"
-          refX="7"
-          refY="5"
-          markerWidth="5"
-          markerHeight="5"
-          orient="auto-start-reverse"
-        >
+        <marker id="arrowBlue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb" />
         </marker>
       </defs>
@@ -1242,17 +1232,11 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
       {flechaG}
 
       {etiquetas.map((e, i) => {
-        // 💡 CAMBIO: Solo oculta cotas si son de 1mm o menos
         if (parseFloat(e.val) <= 2) return null;
         return (
           <text
-            key={`cota-${i}`}
-            x={e.mx}
-            y={e.my + 3}
-            fontSize="16"
-            fill="#e41b05"
-            fontWeight="bold"
-            textAnchor="middle"
+            key={`cota-${i}`} x={e.mx} y={e.my + 3}
+            fontSize="16" fill="#e41b05" fontWeight="bold" textAnchor="middle"
           >
             {e.val}
           </text>
@@ -1261,31 +1245,11 @@ const DibujoSVG = ({ tramos, caraColor, caracteristicas }) => {
 
       {intersecciones.map((int, i) => (
         <g key={`angulo-${i}`}>
-          <path
-            d={`M ${int.ax1} ${int.ay1} A ${int.rArc} ${int.rArc} 0 0 ${int.sweepFlag} ${int.ax2} ${int.ay2}`}
-            fill="none"
-            stroke="#0541c2"
-            strokeWidth="1.2"
-          />
+          <path d={`M ${int.ax1} ${int.ay1} A ${int.rArc} ${int.rArc} 0 0 ${int.sweepFlag} ${int.ax2} ${int.ay2}`} fill="none" stroke="#0541c2" strokeWidth="1.2" />
           {int.leader && (
-            <line
-              x1={int.leader.x1}
-              y1={int.leader.y1}
-              x2={int.leader.x2}
-              y2={int.leader.y2}
-              stroke="#0541c2"
-              strokeWidth="1"
-              markerEnd="url(#arrowBlue)"
-            />
+            <line x1={int.leader.x1} y1={int.leader.y1} x2={int.leader.x2} y2={int.leader.y2} stroke="#0541c2" strokeWidth="1" markerEnd="url(#arrowBlue)" />
           )}
-          <text
-            x={int.tx}
-            y={int.ty}
-            fontSize="16"
-            fill="#0541c2"
-            fontWeight="bold"
-            textAnchor="middle"
-          >
+          <text x={int.tx} y={int.ty} fontSize="16" fill="#0541c2" fontWeight="bold" textAnchor="middle">
             {int.innerDeg}°
           </text>
         </g>
