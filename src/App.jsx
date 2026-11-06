@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
 import DisenadorRemates from './DisenadorRemates';
 import DisenadorCanales from './DisenadorCanales';
+import CalculoDespieces from './components/CalculoDespieces/CalculoDespieces';
 import logoCortiza from './logo-cortiza.png';
 
 const App = () => {
-  // Estado para saber en qué sección estamos: 'menu', 'remates' o 'canales'
+  // Estado para saber en qué sección estamos
   const [seccion, setSeccion] = useState('menu');
 
   if (seccion === 'remates') {
     return (
       <div>
-        <button 
-          onClick={() => setSeccion('menu')} 
-          style={btnVolverStyle}
-          className="no-print"
-        >
+        <button onClick={() => setSeccion('menu')} style={btnVolverStyle} className="no-print">
           ← Volver al Menú Principal
         </button>
         <DisenadorRemates />
@@ -25,14 +22,21 @@ const App = () => {
   if (seccion === 'canales') {
     return (
       <div>
-        <button 
-          onClick={() => setSeccion('menu')} 
-          style={btnVolverStyle}
-          className="no-print"
-        >
+        <button onClick={() => setSeccion('menu')} style={btnVolverStyle} className="no-print">
           ← Volver al Menú Principal
         </button>
         <DisenadorCanales />
+      </div>
+    );
+  }
+
+  if (seccion === 'despieces') {
+    return (
+      <div>
+        <button onClick={() => setSeccion('menu')} style={btnVolverStyle} className="no-print">
+          ← Volver al Menú Principal
+        </button>
+        <CalculoDespieces />
       </div>
     );
   }
@@ -44,7 +48,7 @@ const App = () => {
       <h1 style={{ color: '#2c3e50', marginBottom: '10px', fontSize: '28px' }}>SOFTWARE DE INGENIERÍA CORTIZA</h1>
       <p style={{ color: '#7f8c8d', marginBottom: '40px' }}>Seleccione el módulo de diseño que desea iniciar:</p>
       
-      <div style={{ display: 'flex', gap: '25px' }}>
+      <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap' }}>
         <button onClick={() => setSeccion('remates')} style={cardMenuRemateStyle}>
           <div style={{ fontSize: '40px', marginBottom: '10px' }}>📐</div>
           <strong style={{ fontSize: '18px' }}>Diseñador de Remates</strong>
@@ -55,6 +59,17 @@ const App = () => {
           <div style={{ fontSize: '40px', marginBottom: '10px' }}>💧</div>
           <strong style={{ fontSize: '18px' }}>Diseñador de Canales</strong>
           <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>Vista planta, cálculo de columnas, pendientes e instalación.</p>
+        </button>
+
+        <button 
+          onClick={() => setSeccion('despieces')} 
+          style={{ ...cardMenuCanalStyle, borderTop: '6px solid #10b981' }}
+        >
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>📋</div>
+          <strong style={{ fontSize: '18px' }}>Cálculo de Despieces</strong>
+          <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+            Despieces unificados: Tejas, fijaciones, accesorios, canales y remates.
+          </p>
         </button>
       </div>
     </div>
