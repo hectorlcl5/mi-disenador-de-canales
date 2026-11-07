@@ -43,7 +43,7 @@ const CalculoDespieces = () => {
   const fijBase = { fijacionTodas: true, fijacionA1: "", fijacionA2: "", refuerzoCant: 0, refuerzoTodas: true, refuerzoA1: "", refuerzoA2: "" };
   const [fijaciones, setFijaciones] = useState(fijBase);
 
-  const trasBase = { habilitada: false, tejaSeleccionada: catalogoTejas[0], posicionesA1: "", posicionesA2: "" };
+  const trasBase = { habilitada: false, tejaSeleccionada: catalogoTejas[0], posicionesA1: "", posicionesA2: "", refuerzoCant: 0 };
   const [traslucidas, setTraslucidas] = useState(trasBase);
 
   const [traslaposA1, setTraslaposA1] = useState({});
@@ -183,17 +183,14 @@ const CalculoDespieces = () => {
   const arrRefuerzoA1 = fijaciones?.refuerzoTodas ? Array.from({length: numCorreasA1}, (_, i)=>i) : parseCorreas(fijaciones?.refuerzoA1, numCorreasA1);
   const arrRefuerzoA2 = geoCubierta?.esDosAguas ? (fijaciones?.refuerzoTodas ? Array.from({length: numCorreasA2}, (_, i)=>i) : parseCorreas(fijaciones?.refuerzoA2, numCorreasA2)) : [];
 
-  // 💡 NUEVO: Algoritmo de barrido de costuras para clasificar los tornillos
-  const calcularTornillosAgua = (arrFijacion, arrRefuerzo, totalHojas, colsTraslucidas, cantRef) => {
+  // 💡 NUEVO: Algoritmo de barrido que soporta refuerzos independientes
+  const calcularTornillosAgua = (arrFijacion, arrRefuerzo, totalHojas, colsTraslucidas, cantRefMetal, cantRefTrasl) => {
     let fijMetalica = 0, fijTrasl = 0, refMetalica = 0, refTrasl = 0;
 
     arrFijacion.forEach(() => {
-      // Evaluamos cada borde de unión (0 = inicio, totalHojas = final)
       for (let edge = 0; edge <= totalHojas; edge++) {
         const tocaTraslucidaIzquierda = edge > 0 && colsTraslucidas.includes(edge - 1);
         const tocaTraslucidaDerecha = edge < totalHojas && colsTraslucidas.includes(edge);
-        
-        // Si la costura toca una traslúcida por cualquier lado, lleva fijación de traslúcida
         if (tocaTraslucidaIzquierda || tocaTraslucidaDerecha) {
           fijTrasl++;
         } else {
@@ -203,12 +200,11 @@ const CalculoDespieces = () => {
     });
 
     arrRefuerzo.forEach(() => {
-      // Los refuerzos van al centro, así que solo dependen de qué teja es
       for (let sheet = 0; sheet < totalHojas; sheet++) {
         if (colsTraslucidas.includes(sheet)) {
-          refTrasl += cantRef;
+          refTrasl += cantRefTrasl; // Cuenta los de traslúcida separados
         } else {
-          refMetalica += cantRef;
+          refMetalica += cantRefMetal; // Cuenta los metálicos normales
         }
       }
     });
@@ -216,8 +212,9 @@ const CalculoDespieces = () => {
     return { fijMetalica, fijTrasl, refMetalica, refTrasl };
   };
 
-  const tornillosA1 = calcularTornillosAgua(arrFijacionA1, arrRefuerzoA1, totalHojasA1, colTraslucidasA1, cantRefuerzos);
-  const tornillosA2 = geoCubierta?.esDosAguas ? calcularTornillosAgua(arrFijacionA2, arrRefuerzoA2, totalHojasA2, colTraslucidasA2, cantRefuerzos) : { fijMetalica: 0, fijTrasl: 0, refMetalica: 0, refTrasl: 0 };
+  const cantRefuerzosTrasl = parseInt(traslucidas?.refuerzoCant) || 0;
+  const tornillosA1 = calcularTornillosAgua(arrFijacionA1, arrRefuerzoA1, totalHojasA1, colTraslucidasA1, cantRefuerzos, cantRefuerzosTrasl);
+  const tornillosA2 = geoCubierta?.esDosAguas ? calcularTornillosAgua(arrFijacionA2, arrRefuerzoA2, totalHojasA2, colTraslucidasA2, cantRefuerzos, cantRefuerzosTrasl) : { fijMetalica: 0, fijTrasl: 0, refMetalica: 0, refTrasl: 0 };
 
   const fijacionMetalica = tornillosA1.fijMetalica + tornillosA2.fijMetalica;
   const fijacionTraslucida = tornillosA1.fijTrasl + tornillosA2.fijTrasl;
@@ -509,22 +506,29 @@ const CalculoDespieces = () => {
           }
         }
         
-        if (hasRefuerzo && cantRefuerzos > 0) {
+        if (hasRefuerzo) {
           for (let col = 0; col < totalHojas; col++) {
             let basePosX = paddingX + (col * tejaPx);
             const esTraslucida = colsTrasl.includes(col);
-            const fillColor = esTraslucida ? "#db2777" : "#ef4444"; // Rosado para refuerzo traslúcida
-            const strokeColor = esTraslucida ? "#be185d" : "#7f1d1d";
+            
+            // 💡 Tomamos la cantidad independiente según el tipo de teja
+            const currentCantRef = esTraslucida ? (parseInt(traslucidas?.refuerzoCant) || 0) : cantRefuerzos;
 
-            if (cantRefuerzos === 1) {
-              tornillosSVG.push(<circle key={`tr-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 2)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
-            } else if (cantRefuerzos === 2) {
-              tornillosSVG.push(<circle key={`tr1-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 3)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
-              tornillosSVG.push(<circle key={`tr2-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx * 2 / 3)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
-            } else if (cantRefuerzos === 3) {
-              tornillosSVG.push(<circle key={`tr1-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 4)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
-              tornillosSVG.push(<circle key={`tr2-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 2)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
-              tornillosSVG.push(<circle key={`tr3-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx * 3 / 4)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
+            if (currentCantRef > 0) {
+              // 💡 Unificamos al color Púrpura Brillante si es traslúcida, Rojo si es Metálica
+              const fillColor = esTraslucida ? "#a855f7" : "#ef4444"; 
+              const strokeColor = esTraslucida ? "#7e22ce" : "#7f1d1d";
+
+              if (currentCantRef === 1) {
+                tornillosSVG.push(<circle key={`tr-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 2)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
+              } else if (currentCantRef === 2) {
+                tornillosSVG.push(<circle key={`tr1-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 3)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
+                tornillosSVG.push(<circle key={`tr2-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx * 2 / 3)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
+              } else if (currentCantRef === 3) {
+                tornillosSVG.push(<circle key={`tr1-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 4)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
+                tornillosSVG.push(<circle key={`tr2-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx / 2)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
+                tornillosSVG.push(<circle key={`tr3-${isAgua1}-${i}-${col}`} cx={basePosX + (tejaPx * 3 / 4)} cy={posCY} r={1.8 * textScale} fill={fillColor} stroke={strokeColor} strokeWidth={0.5 * textScale} />);
+              }
             }
           }
         }
@@ -704,9 +708,20 @@ const CalculoDespieces = () => {
               <div style={seccionFormStyle}>
                 <strong style={labelTituloSeccion}>1. Cubierta (Metros)</strong>
                 <label style={labelStyle}>Largo Cubierta (Ejes Y):</label><input type="number" style={inputStyle} value={geoCubierta?.largoCubierta ?? ""} onChange={(e) => setGeoCubierta({...geoCubierta, largoCubierta: e.target.value})} />
+                
                 <label style={labelStyle}>Ancho Cubierta (Fachada):</label><input type="number" style={inputStyle} value={geoCubierta?.anchoCubierta ?? ""} onChange={(e) => setGeoCubierta({...geoCubierta, anchoCubierta: e.target.value})} />
+                
+                {/* 💡 NUEVO: Aparece el ancho 2 si NO es simétrica y es a dos aguas */}
+                {geoCubierta?.esDosAguas && !geoCubierta?.esSimetrica && (
+                  <>
+                    <label style={labelStyle}>Ancho Agua 2 (Fachada):</label>
+                    <input type="number" style={inputStyle} value={geoCubierta?.anchoAgua2 ?? ""} onChange={(e) => setGeoCubierta({...geoCubierta, anchoAgua2: e.target.value})} />
+                  </>
+                )}
+
                 <label style={checkboxLabelStyle}><input type="checkbox" checked={!!geoCubierta?.esSimetrica} onChange={(e) => setGeoCubierta({...geoCubierta, esSimetrica: e.target.checked})} /> Cubierta Simétrica</label>
                 <label style={checkboxLabelStyle}><input type="checkbox" checked={!!geoCubierta?.esDosAguas} onChange={(e) => setGeoCubierta({...geoCubierta, esDosAguas: e.target.checked})} /> Es a Dos Aguas</label>
+                
                 {!geoCubierta?.esDosAguas && (
                   <div style={{ marginTop: "6px", backgroundColor: "#f8fafc", padding: "6px", borderRadius: "4px", border: "1px solid #e2e8f0" }}>
                     <label style={labelStyle}>Dirección de Caída (Un Agua):</label>
@@ -721,10 +736,34 @@ const CalculoDespieces = () => {
               <div style={seccionFormStyle}>
                 <strong style={labelTituloSeccion}>2. Pendiente</strong>
                 <label style={checkboxLabelStyle}><input type="checkbox" checked={!!pendiente?.conoceAngulo} onChange={(e) => setPendiente({...pendiente, conoceAngulo: e.target.checked})} /> Conozco el ángulo (°)</label>
+                
                 {pendiente?.conoceAngulo ? (
-                  <div style={{ marginTop: "8px" }}><label style={labelStyle}>Ángulo Agua 1 (°):</label><input type="number" style={inputStyle} value={pendiente?.anguloA1 ?? ""} onChange={(e) => setPendiente({...pendiente, anguloA1: e.target.value})} /></div>
+                  <div style={{ marginTop: "8px" }}>
+                    <label style={labelStyle}>Ángulo Agua 1 (°):</label><input type="number" style={inputStyle} value={pendiente?.anguloA1 ?? ""} onChange={(e) => setPendiente({...pendiente, anguloA1: e.target.value})} />
+                    
+                    {/* 💡 NUEVO: Ángulo Agua 2 */}
+                    {geoCubierta?.esDosAguas && !geoCubierta?.esSimetrica && (
+                      <>
+                        <label style={labelStyle}>Ángulo Agua 2 (°):</label>
+                        <input type="number" style={inputStyle} value={pendiente?.anguloA2 ?? ""} onChange={(e) => setPendiente({...pendiente, anguloA2: e.target.value})} />
+                      </>
+                    )}
+                  </div>
                 ) : (
-                  <div style={{ backgroundColor: "#eff6ff", padding: "8px", borderRadius: "4px", border: "1px solid #bfdbfe", marginTop: "8px" }}><span style={{ fontSize: "9px", color: "#1d4ed8", fontWeight: "bold" }}>Calc. por catetos:</span><label style={labelStyle}>Longitud plana (m):</label><input type="number" style={inputStyle} value={pendiente?.longitudPlanaA1 ?? ""} onChange={(e) => setPendiente({...pendiente, longitudPlanaA1: e.target.value})} /><label style={labelStyle}>Altura caballete (m):</label><input type="number" style={inputStyle} value={pendiente?.alturaCaballeteA1 ?? ""} onChange={(e) => setPendiente({...pendiente, alturaCaballeteA1: e.target.value})} /></div>
+                  <div style={{ backgroundColor: "#eff6ff", padding: "8px", borderRadius: "4px", border: "1px solid #bfdbfe", marginTop: "8px" }}>
+                    <span style={{ fontSize: "9px", color: "#1d4ed8", fontWeight: "bold" }}>Calc. por catetos (Agua 1):</span>
+                    <label style={labelStyle}>Longitud plana (m):</label><input type="number" style={inputStyle} value={pendiente?.longitudPlanaA1 ?? ""} onChange={(e) => setPendiente({...pendiente, longitudPlanaA1: e.target.value})} />
+                    <label style={labelStyle}>Altura caballete (m):</label><input type="number" style={inputStyle} value={pendiente?.alturaCaballeteA1 ?? ""} onChange={(e) => setPendiente({...pendiente, alturaCaballeteA1: e.target.value})} />
+                    
+                    {/* 💡 NUEVO: Catetos Agua 2 */}
+                    {geoCubierta?.esDosAguas && !geoCubierta?.esSimetrica && (
+                      <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed #93c5fd" }}>
+                        <span style={{ fontSize: "9px", color: "#1d4ed8", fontWeight: "bold" }}>Calc. por catetos (Agua 2):</span>
+                        <label style={labelStyle}>Longitud plana A2 (m):</label><input type="number" style={inputStyle} value={pendiente?.longitudPlanaA2 ?? ""} onChange={(e) => setPendiente({...pendiente, longitudPlanaA2: e.target.value})} />
+                        <label style={labelStyle}>Altura caballete A2 (m):</label><input type="number" style={inputStyle} value={pendiente?.alturaCaballeteA2 ?? ""} onChange={(e) => setPendiente({...pendiente, alturaCaballeteA2: e.target.value})} />
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -808,6 +847,16 @@ const CalculoDespieces = () => {
                         <input type="text" style={inputStyle} value={traslucidas?.posicionesA2 || ""} onChange={(e) => setTraslucidas({...traslucidas, posicionesA2: e.target.value})} placeholder={`Ej: 2, 8`} />
                       </div>
                     )}
+                    {/* 💡 NUEVO: Control independiente de refuerzos para traslúcidas */}
+                    <div style={{ marginTop: "12px", borderTop: "1px dashed #cbd5e1", paddingTop: "8px" }}>
+                      <span style={{ fontSize: "10px", color: "#7e22ce", fontWeight: "bold" }}>Tornillos de Refuerzo (Solo Traslúcidas):</span>
+                      <select style={{...inputStyle, marginTop: "4px"}} value={traslucidas?.refuerzoCant ?? 0} onChange={(e) => setTraslucidas({...traslucidas, refuerzoCant: parseInt(e.target.value)})}>
+                        <option value={0}>0 Tornillos en el centro</option>
+                        <option value={1}>1 Tornillo en el centro</option>
+                        <option value={2}>2 Tornillos en el centro</option>
+                        <option value={3}>3 Tornillos en el centro</option>
+                      </select>
+                    </div>
                   </div>
                 )}
               </div>
