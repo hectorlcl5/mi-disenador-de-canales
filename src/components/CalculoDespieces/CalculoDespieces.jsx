@@ -660,9 +660,12 @@ const CalculoDespieces = () => {
       <style>{`
         @media print {
           @page { size: landscape; margin: 10mm; }
-          body { background-color: white !important; margin: 0; padding: 0; }
+          body, html, #root { background-color: white !important; margin: 0; padding: 0; height: auto !important; overflow: visible !important; }
           .no-print { display: none !important; }
-          .print-area { width: 100% !important; height: auto !important; box-shadow: none !important; border: none !important; overflow: visible !important; padding: 0 !important; }
+          .print-area { width: 100% !important; height: auto !important; box-shadow: none !important; border: none !important; overflow: visible !important; padding: 0 !important; display: block !important; }
+          .page-break { page-break-before: always; break-before: page; margin-top: 20px; }
+          /* Esta regla mágica evita que la pantalla corte la segunda hoja al imprimir */
+          div { overflow: visible !important; }
         }
       `}</style>
 
@@ -903,33 +906,33 @@ const CalculoDespieces = () => {
                 {dibujarEstructuraSVG()}
               </div>
               
-              <h3 style={{ margin: "0 0 10px 0", color: "#1e293b", fontSize: "14px", borderTop: "2px solid #f1f5f9", paddingTop: "10px" }}>Cubicación de Tejas para Fabricación</h3>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid #cbd5e1" }}>
-                <thead>
-                  <tr>
-                    <th style={tableThStyle}>Vertiente</th>
-                    <th style={tableThStyle}>Tipo de Teja</th>
-                    <th style={tableThStyle}>Tramo de Teja</th>
-                    <th style={tableThStyle}>Medida Corte (m)</th>
-                    <th style={tableThStyle}>Cantidad</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {todosLosTramos.map((tramo, i) => (
-                    <tr key={i} style={{ backgroundColor: tramo.tipo === "Traslúcida" ? "#f0fdf4" : "transparent" }}>
-                      <td style={tableTdStyle}><strong>{tramo.agua}</strong></td>
-                      <td style={{...tableTdStyle, color: tramo.tipo === "Traslúcida" ? "#16a34a" : "#475569", fontWeight: "bold"}}>{tramo.tipo}</td>
-                      <td style={tableTdStyle}>{tramo.etiqueta}</td>
-                      <td style={{...tableTdStyle, color: "#2563eb", fontWeight: "bold"}}>{(parseFloat(tramo.medida) || 0).toFixed(2)} m</td>
-                      <td style={{...tableTdStyle, color: tramo.tipo === "Traslúcida" ? "#15803d" : "#10b981", fontWeight: "bold"}}>{tramo.cantidad} unds</td>
+              <div className="page-break">
+                <h3 style={{ margin: "0 0 10px 0", color: "#1e293b", fontSize: "14px", borderTop: "2px solid #f1f5f9", paddingTop: "10px" }}>Cubicación de Tejas para Fabricación</h3>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid #cbd5e1" }}>
+                  <thead>
+                    <tr>
+                      <th style={tableThStyle}>Vertiente</th>
+                      <th style={tableThStyle}>Tramo de Teja</th>
+                      <th style={tableThStyle}>Medida Corte (m)</th>
+                      <th style={tableThStyle}>Cantidad (Tejas)</th>
                     </tr>
-                  ))}
-                  <tr style={{ backgroundColor: "#f8fafc" }}>
-                    <td colSpan="4" style={{...tableTdStyle, textAlign: "right", fontWeight: "bold"}}>TOTAL TEJAS A FABRICAR:</td>
-                    <td style={{...tableTdStyle, color: "#f97316", fontWeight: "bold", fontSize: "14px"}}>{todosLosTramos.reduce((sum, t) => sum + t.cantidad, 0)} unds</td>
-                  </tr>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {todosLosTramos.map((tramo, i) => (
+                      <tr key={i}>
+                        <td style={tableTdStyle}><strong>{tramo.agua}</strong></td>
+                        <td style={tableTdStyle}>{tramo.etiqueta}</td>
+                        <td style={{...tableTdStyle, color: "#2563eb", fontWeight: "bold"}}>{(parseFloat(tramo.medida) || 0).toFixed(2)} m</td>
+                        <td style={{...tableTdStyle, color: "#10b981", fontWeight: "bold"}}>{tramo.cantidad} unds</td>
+                      </tr>
+                    ))}
+                    <tr style={{ backgroundColor: "#f8fafc" }}>
+                      <td colSpan="3" style={{...tableTdStyle, textAlign: "right", fontWeight: "bold"}}>TOTAL TEJAS A FABRICAR:</td>
+                      <td style={{...tableTdStyle, color: "#f97316", fontWeight: "bold", fontSize: "14px"}}>{todosLosTramos.reduce((sum, t) => sum + t.cantidad, 0)} unds</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}
